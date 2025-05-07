@@ -1,14 +1,31 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'  // Use env variable or fallback to relative path
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'  // Use env variable or fallback to localhost URL with port 8000
+
+// Initialize CSRF protection for non-GET requests
+const initializeCsrf = async () => {
+  try {
+    // Laravel's route to get the CSRF cookie
+    await axios.get('http://127.0.0.1:8000/sanctum/csrf-cookie', {
+      withCredentials: true
+    });
+    console.log('CSRF cookie obtained');
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize CSRF protection:', error);
+    return false;
+  }
+};
 
 // Create an axios instance with default config
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest' // This is important for Laravel to recognize the request as AJAX
+  },
+  withCredentials: true // This is important for CSRF protection and cookies
 })
 
 // Add a request interceptor to add auth token
@@ -29,32 +46,68 @@ api.interceptors.request.use(
 export const authService = {
   login: async (credentials) => {
     try {
+      // Get CSRF cookie first
+      await initializeCsrf();
+      
       const response = await api.post('/customers/login', credentials)
-      if (response.data.token) {
-        localStorage.setItem('authToken', response.data.token)
-        localStorage.setItem('user', JSON.stringify(response.data.data))
-      }
-      return response.data
-    } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
-    }
-  },
-  
-  register: async (userData) => {
-    try {
-      const response = await api.post('/customers/register', userData)
-      if (response.data.data?.token) {
+      if (response.data.success && response.data.data && response.data.data.token) {
         localStorage.setItem('authToken', response.data.data.token)
         localStorage.setItem('user', JSON.stringify(response.data.data))
       }
       return response.data
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      if (error.response && error.response.data) {
+        throw error.response.data
+      } else {
+        throw { message: 'Network error occurred' }
+      }
+    }
+  },
+  
+  register: async (userData) => {
+    try {
+      // Get CSRF cookie first
+      await initializeCsrf();
+      
+      console.log('Sending registration data:', { ...userData, password: '***', password_confirmation: '***' });
+      console.log('API URL:', API_URL + '/customers/register');
+      
+      const response = await api.post('/customers/register', userData);
+      console.log('Registration response:', response);
+      
+      if (response.data.success && response.data.data && response.data.data.token) {
+        localStorage.setItem('authToken', response.data.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.data));
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Registration error details:', error);
+      
+      // Print the entire error object for debugging
+      console.log('Full error object:', JSON.stringify(error, null, 2));
+      
+      if (error.response) {
+        console.error('Server responded with:', error.response.status, error.response.data);
+        return { 
+          success: false, 
+          message: error.response.data.message || 'Registration failed', 
+          errors: error.response.data.errors 
+        };
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        throw { message: 'No response from server. Please check your connection.' };
+      } else {
+        console.error('Request setup error:', error.message);
+        throw { message: `Request failed: ${error.message}` };
+      }
     }
   },
   
   logout: async () => {
     try {
+      // Get CSRF cookie first
+      await initializeCsrf();
+      
       await api.post('/customers/logout')
       localStorage.removeItem('authToken')
       localStorage.removeItem('user')
@@ -94,9 +147,11 @@ export const orderService = {
   getOrders: async () => {
     try {
       const response = await api.get('/orders')
+      console.log('Orders API response:', response.data)
       return response.data
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      console.error('Order fetch error:', error)
+      return { success: false, message: 'Failed to fetch orders', orders: [] }
     }
   },
   
@@ -124,9 +179,11 @@ export const profileService = {
   getProfile: async () => {
     try {
       const response = await api.get('/customers/profile')
+      console.log('Profile API response:', response.data)
       return response.data
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      console.error('Profile fetch error:', error)
+      return { success: false, message: 'Failed to fetch profile data' }
     }
   },
   

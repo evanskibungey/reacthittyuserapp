@@ -8,6 +8,7 @@ import Products from './pages/Products'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
 import Profile from './pages/Profile'
+import Dashboard from './pages/Dashboard'
 import NotFound from './pages/NotFound'
 
 // Import Components
@@ -49,6 +50,11 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute isLoggedIn={isLoggedIn}>
               <Profile />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute isLoggedIn={isLoggedIn}>
+              <Dashboard />
             </ProtectedRoute>
           } />
           

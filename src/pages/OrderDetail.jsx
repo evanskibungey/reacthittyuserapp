@@ -1,279 +1,314 @@
-import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { orderService } from '../services/api'
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { orderService, authService } from '../services/api';
+import Header from '../components/Header';
+import Sidebar from '../components/Sidebar';
+import { 
+  FaBox, 
+  FaTruck, 
+  FaArrowLeft, 
+  FaCalendarAlt,
+  FaCreditCard,
+  FaMapMarkerAlt,
+  FaCheckCircle,
+  FaClock,
+  FaTimes,
+  FaRegClock
+} from 'react-icons/fa';
 
 const OrderDetail = () => {
-  const { id } = useParams()
-  const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { id } = useParams();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
+      setLoading(true);
       try {
-        setLoading(true)
-        
-        try {
-          // Try to fetch from API
-          const response = await orderService.getOrder(id)
-          setOrder(response.order || null)
-        } catch (err) {
-          console.log('API not available, using sample data')
-          // Sample data for development
-          setOrder({
-            order_number: `ORD-2025-000${id}`,
-            status: ['pending', 'processing', 'completed'][Math.floor(Math.random() * 3)],
-            payment_method: 'M-Pesa',
-            subtotal: 3000,
-            discount: 200,
-            total: 2800,
-            delivery_address: '123 Main St, Nairobi, Kenya',
-            notes: 'Please deliver in the afternoon',
-            created_at: '2025-05-01T10:30:00',
-            completed_at: '2025-05-01T14:30:00',
-            customer: {
-              id: 1,
-              name: 'John Doe',
-              phone: '+254712345678',
-              email: 'john@example.com'
-            },
-            items: [
-              {
-                product_id: 1,
-                product_name: 'LPG 6kg Cylinder',
-                quantity: 1,
-                unit_price: 1200,
-                total: 1200
-              },
-              {
-                product_id: 4,
-                product_name: 'Gas Regulator',
-                quantity: 1,
-                unit_price: 500,
-                total: 500
-              }
-            ]
-          })
+        const response = await orderService.getOrder(id);
+        console.log('Order details response:', response);
+        if (response.success) {
+          setOrder(response.order);
+        } else {
+          setError(response.message || 'Failed to load order details');
         }
-      } catch (error) {
-        console.error('Error fetching order details:', error)
-        setError('Failed to load order details. Please try again later.')
+      } catch (err) {
+        setError('Error fetching order details. Please try again.');
+        console.error('Order fetch error:', err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
+    };
+
+    fetchOrderDetails();
+  }, [id]);
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      navigate('/');
     }
+  };
 
-    fetchOrderDetails()
-  }, [id])
-
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      'pending': 'bg-yellow-100 text-yellow-800',
-      'processing': 'bg-blue-100 text-blue-800',
-      'completed': 'bg-green-100 text-green-800',
-      'cancelled': 'bg-red-100 text-red-800'
+  const getStatusIcon = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'delivered':
+        return <FaCheckCircle className="text-green-500" />;
+      case 'processing':
+        return <FaClock className="text-blue-500" />;
+      case 'shipped':
+        return <FaTruck className="text-indigo-500" />;
+      case 'cancelled':
+        return <FaTimes className="text-red-500" />;
+      default:
+        return <FaRegClock className="text-yellow-500" />;
     }
-    
-    return `px-3 py-1 rounded-full text-sm font-medium ${statusMap[status] || 'bg-gray-100 text-gray-800'}`
-  }
+  };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date)
-  }
+  const getStatusColor = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'shipped':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-yellow-100 text-yellow-800';
+    }
+  };
 
   if (loading) {
     return (
-      <div className="container mx-auto text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600 mr-2"></div>
-        Loading order details...
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-        <div className="mt-4">
-          <Link to="/orders" className="text-blue-600 hover:underline">
-            &larr; Back to Orders
-          </Link>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error!</strong>
+          <span className="block sm:inline"> {error}</span>
         </div>
       </div>
-    )
-  }
-
-  if (!order) {
-    return (
-      <div className="container mx-auto">
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-          Order not found.
-        </div>
-        <div className="mt-4">
-          <Link to="/orders" className="text-blue-600 hover:underline">
-            &larr; Back to Orders
-          </Link>
-        </div>
-      </div>
-    )
+    );
   }
 
   return (
-    <div className="container mx-auto">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Order Details</h1>
-        <Link to="/orders" className="text-blue-600 hover:underline">
-          &larr; Back to Orders
-        </Link>
-      </div>
+    <>
+      <Header
+        setIsAuthModalOpen={setIsAuthModalOpen}
+        setIsCartOpen={setIsCartOpen}
+        isLoggedIn={true}
+        setIsLoggedIn={() => {}}
+      />
       
-      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-        <div className="p-6 border-b">
-          <div className="flex flex-wrap justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">{order.order_number}</h2>
-              <p className="text-gray-600">Placed on {formatDate(order.created_at)}</p>
-            </div>
-            <div>
-              <span className={getStatusBadge(order.status)}>
-                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-              </span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-2">Customer Information</h3>
-              <p>{order.customer.name}</p>
-              <p>{order.customer.phone}</p>
-              {order.customer.email && <p>{order.customer.email}</p>}
-            </div>
-            
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-2">Delivery Address</h3>
-              <p>{order.delivery_address}</p>
+      <div className="flex min-h-screen bg-gray-50">
+        {/* Sidebar */}
+        <Sidebar onLogout={handleLogout} />
+        
+        {/* Main Content */}
+        <div className="ml-64 w-full pt-16 px-8 pb-8 overflow-y-auto">
+          {order ? (
+            <>
+              {/* Back button and Order Title */}
+              <div className="mb-8">
+                <button 
+                  onClick={() => navigate('/orders')}
+                  className="mb-4 flex items-center text-gray-600 hover:text-gray-900"
+                >
+                  <FaArrowLeft className="mr-2" />
+                  Back to Orders
+                </button>
+                
+                <div className="flex flex-wrap justify-between items-center">
+                  <h1 className="text-2xl font-bold text-gray-800">
+                    Order #{order.id || order.order_number}
+                  </h1>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-500 flex items-center">
+                      <FaCalendarAlt className="mr-2 text-gray-400" />
+                      Placed on: {new Date(order.created_at).toLocaleDateString()}
+                    </span>
+                    <span className={`px-4 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                      {getStatusIcon(order.status)}
+                      <span className="ml-1">{order.status}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
               
-              {order.notes && (
-                <>
-                  <h3 className="font-semibold text-gray-800 mt-4 mb-2">Notes</h3>
-                  <p>{order.notes}</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-6">
-          <h3 className="font-semibold text-gray-800 mb-4">Order Items</h3>
-          
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Product
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quantity
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Unit Price
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {order.items.map((item, index) => (
-                  <tr key={index}>
-                    <td className="px-4 py-4 text-sm text-gray-900">
-                      {item.product_name}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 text-center">
-                      {item.quantity}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 text-right">
-                      KSh {item.unit_price.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 text-right font-medium">
-                      KSh {item.total.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="mt-6 border-t pt-6">
-            <div className="flex justify-between mb-2">
-              <span className="text-gray-600">Subtotal</span>
-              <span>KSh {order.subtotal.toLocaleString()}</span>
-            </div>
-            
-            {order.discount > 0 && (
-              <div className="flex justify-between mb-2 text-green-600">
-                <span>Discount</span>
-                <span>- KSh {order.discount.toLocaleString()}</span>
+              {/* Order Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                {/* Order Summary Card */}
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-lg font-semibold text-gray-800">Order Summary</h2>
+                  </div>
+                  
+                  <div className="p-6 space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="text-gray-800 font-medium">₦{order.subtotal}</span>
+                    </div>
+                    
+                    {order.discount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount:</span>
+                        <span>-₦{order.discount}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Shipping:</span>
+                      <span className="text-gray-800 font-medium">Free</span>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-gray-100 flex justify-between">
+                      <span className="text-gray-800 font-bold">Total:</span>
+                      <span className="text-gray-800 font-bold">₦{order.total}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Payment Information */}
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-lg font-semibold text-gray-800">Payment Information</h2>
+                  </div>
+                  
+                  <div className="p-6">
+                    <div className="flex items-center mb-4">
+                      <FaCreditCard className="mr-3 text-gray-400" />
+                      <div>
+                        <p className="text-gray-600">Payment Method</p>
+                        <p className="text-gray-800 font-medium">{order.payment_method || 'Cash on Delivery'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                        <FaCheckCircle className="text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Payment Status</p>
+                        <p className="text-green-600 font-medium">Paid</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Shipping Information */}
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-lg font-semibold text-gray-800">Shipping Information</h2>
+                  </div>
+                  
+                  <div className="p-6">
+                    <div className="flex items-start mb-4">
+                      <FaMapMarkerAlt className="mr-3 mt-1 text-gray-400" />
+                      <div>
+                        <p className="text-gray-600">Delivery Address</p>
+                        <p className="text-gray-800 font-medium">{order.delivery_address || 'No address provided'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <FaTruck className="mr-3 mt-1 text-gray-400" />
+                      <div>
+                        <p className="text-gray-600">Shipping Status</p>
+                        <p className="text-gray-800 font-medium">Estimated Delivery: 3-5 business days</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-            
-            <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t">
-              <span>Total</span>
-              <span>KSh {order.total.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gray-50 p-6 border-t">
-          <div className="flex flex-wrap justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-2">Payment Method</h3>
-              <p>{order.payment_method}</p>
-            </div>
-            
-            {order.completed_at && (
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-2">Completed On</h3>
-                <p>{formatDate(order.completed_at)}</p>
+              
+              {/* Order Items Table */}
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="text-lg font-semibold text-gray-800">Order Items</h2>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3">Product</th>
+                        <th className="px-6 py-3">Quantity</th>
+                        <th className="px-6 py-3">Unit Price</th>
+                        <th className="px-6 py-3">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {order.items && order.items.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center mr-3">
+                                <FaBox className="text-gray-400" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800">{item.product_name}</p>
+                                <p className="text-sm text-gray-500">ID: {item.product_id}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-800">
+                            {item.quantity}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-800">
+                            ₦{item.unit_price}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">
+                            ₦{item.total}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            )}
-          </div>
+              
+              {/* Actions */}
+              <div className="flex justify-end space-x-4">
+                <button className="px-6 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors font-medium">
+                  Need Help?
+                </button>
+                <button className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors font-medium">
+                  Track Order
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <FaBox className="mx-auto text-gray-300 text-5xl mb-4" />
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Order Not Found</h2>
+              <p className="text-gray-600 mb-6">The order you are looking for does not exist or has been removed.</p>
+              <Link 
+                to="/orders"
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700"
+              >
+                View Your Orders
+              </Link>
+            </div>
+          )}
         </div>
       </div>
-      
-      {order.status === 'pending' && (
-        <div className="text-center p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
-          <p className="text-yellow-800 mb-2">Your order is pending confirmation.</p>
-          <p className="text-gray-600 text-sm">We'll notify you once it's being processed.</p>
-        </div>
-      )}
-      
-      {order.status === 'processing' && (
-        <div className="text-center p-4 bg-blue-50 border border-blue-100 rounded-lg">
-          <p className="text-blue-800 mb-2">Your order is being prepared for delivery.</p>
-          <p className="text-gray-600 text-sm">We'll update you when it's on the way.</p>
-        </div>
-      )}
-      
-      {order.status === 'completed' && (
-        <div className="text-center p-4 bg-green-50 border border-green-100 rounded-lg">
-          <p className="text-green-800 mb-2">Your order has been completed.</p>
-          <p className="text-gray-600 text-sm">Thank you for shopping with Hitty Deliveries!</p>
-        </div>
-      )}
-    </div>
-  )
-}
+    </>
+  );
+};
 
-export default OrderDetail
+export default OrderDetail;

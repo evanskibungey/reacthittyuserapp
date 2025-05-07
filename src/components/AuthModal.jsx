@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaEnvelope, FaLock, FaUser, FaPhone, FaTimes, FaFacebook, FaGoogle } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaUser, FaPhone, FaTimes, FaFacebook, FaGoogle, FaMapMarkerAlt, FaGift } from 'react-icons/fa';
+import { authService } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -7,8 +9,15 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [location, setLocation] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
+  const [loading, setLoading] = useState(false);
   const modalRef = useRef();
+  const navigate = useNavigate();
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -46,28 +55,96 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
     setPassword('');
     setName('');
     setPhone('');
+    setLocation('');
+    setReferralCode('');
+    setConfirmPassword('');
+    setError('');
+    setValidationErrors({});
   }, [isLogin]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Simulate login
-    console.log('Logging in with:', { email, password, rememberMe });
+    setError('');
+    setValidationErrors({});
+    setLoading(true);
     
-    // For demo purposes, just set as logged in
-    localStorage.setItem('authToken', 'demo-token');
-    setIsLoggedIn(true);
-    onClose();
+    try {
+      // Call Laravel API to login customer
+      const response = await authService.login({ 
+        phone, 
+        password, 
+        remember: rememberMe 
+      });
+      
+      if (response.success) {
+        setIsLoggedIn(true);
+        onClose();
+        navigate('/dashboard');
+      } else {
+        setError(response.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      if (err.errors) {
+        setValidationErrors(err.errors);
+      } else {
+        setError(err.message || 'Invalid credentials');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    // Simulate registration
-    console.log('Registering with:', { name, email, phone, password });
+    setError('');
+    setValidationErrors({});
+    setLoading(true);
     
-    // For demo purposes, just set as logged in
-    localStorage.setItem('authToken', 'demo-token');
-    setIsLoggedIn(true);
-    onClose();
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      // Call Laravel API to register customer
+      const userData = { 
+        name, 
+        email: email || null, // Make sure null is sent if empty
+        phone, 
+        password,
+        password_confirmation: confirmPassword,
+        location: location || null // Make sure null is sent if empty
+      };
+      
+      // Only add referral code if it's provided
+      if (referralCode && referralCode.trim()) {
+        userData.referral_code = referralCode.trim();
+      }
+      
+      console.log('Sending registration data:', { ...userData, password: '***', password_confirmation: '***' });
+      
+      const response = await authService.register(userData);
+      console.log('Registration response:', response);
+      
+      if (response.success) {
+        setIsLoggedIn(true);
+        onClose();
+        navigate('/dashboard');
+      } else {
+        setError(response.message || 'Registration failed');
+        
+        if (response.errors) {
+          setValidationErrors(response.errors);
+        }
+      }
+    } catch (err) {
+      console.error('Registration error in component:', err);
+      setError(err.message || 'Registration failed. Check browser console for details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Animation classes
@@ -90,11 +167,12 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
         {/* Modal Header */}
         <div className="relative p-6 border-b">
           <h2 className="text-2xl font-bold text-center text-gray-800">
-            {isLogin ? 'Welcome Back' : 'Create Account'}
+            {isLogin ? 'Customer Login' : 'Customer Registration'}
           </h2>
           <button 
             onClick={onClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Close modal"
           >
             <FaTimes size={24} />
           </button>
@@ -102,46 +180,47 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
 
         {/* Modal Body */}
         <div className="p-6">
-          {/* Social Login Buttons */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <button className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition-colors">
-              <FaFacebook className="mr-2" />
-              <span>Facebook</span>
-            </button>
-            <button className="flex items-center justify-center bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg transition-colors">
-              <FaGoogle className="mr-2" />
-              <span>Google</span>
-            </button>
-          </div>
-
-          <div className="relative my-6">
+          {/* Divider for visual separation */}
+          <div className="relative my-2">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">Or continue with</span>
+              <div className="w-full border-t border-gray-200"></div>
             </div>
           </div>
 
           {/* Login Form */}
           {isLogin ? (
             <form onSubmit={handleLogin} className="space-y-4">
+              {/* Show error message if login fails */}
+              {error && (
+                <div className="text-red-600 text-sm mb-2">{error}</div>
+              )}
+              {/* Show validation errors */}
+              {validationErrors.phone && (
+                <div className="text-red-600 text-sm mb-2">{validationErrors.phone[0]}</div>
+              )}
+              {validationErrors.password && (
+                <div className="text-red-600 text-sm mb-2">{validationErrors.password[0]}</div>
+              )}
+              {/* Section header for login */}
+              <div className="mb-2 text-lg font-semibold text-gray-700 text-center">Sign in to your account</div>
               <div>
+                {/* Phone input */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaEnvelope className="text-gray-400" />
+                    <FaPhone className="text-gray-400" />
                   </div>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Email Address"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
+                    placeholder="Phone Number"
                     required
                   />
                 </div>
               </div>
               <div>
+                {/* Password input */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaLock className="text-gray-400" />
@@ -150,13 +229,14 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
                     placeholder="Password"
                     required
                   />
                 </div>
               </div>
               <div className="flex items-center justify-between">
+                {/* Remember me checkbox */}
                 <label className="flex items-center text-sm">
                   <input 
                     type="checkbox" 
@@ -172,14 +252,28 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
               </div>
               <button 
                 type="submit"
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-medium py-3 px-4 rounded-lg transition-colors transform hover:-translate-y-0.5"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg disabled:bg-purple-400 disabled:cursor-not-allowed"
               >
-                Sign In
+                {loading ? 'Signing In...' : 'Sign In'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleRegister} className="space-y-4">
+              {/* Show error message if registration fails */}
+              {error && (
+                <div className="text-red-600 text-sm mb-2">{error}</div>
+              )}
+              {/* Show validation errors */}
+              {Object.keys(validationErrors).map((field) => (
+                <div key={field} className="text-red-600 text-sm mb-2">
+                  {validationErrors[field][0]}
+                </div>
+              ))}
+              {/* Section header for registration */}
+              <div className="mb-2 text-lg font-semibold text-gray-700 text-center">Create your account</div>
               <div>
+                {/* Name input */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaUser className="text-gray-400" />
@@ -188,13 +282,14 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
                     placeholder="Full Name"
                     required
                   />
                 </div>
               </div>
               <div>
+                {/* Email input (optional) */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaEnvelope className="text-gray-400" />
@@ -203,13 +298,13 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Email Address"
-                    required
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
+                    placeholder="Email Address (optional)"
                   />
                 </div>
               </div>
               <div>
+                {/* Phone input */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaPhone className="text-gray-400" />
@@ -218,12 +313,14 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
                     placeholder="Phone Number"
+                    required
                   />
                 </div>
               </div>
               <div>
+                {/* Password input */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaLock className="text-gray-400" />
@@ -232,13 +329,63 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
                     placeholder="Password"
                     required
                   />
                 </div>
               </div>
+              <div>
+                {/* Confirm password input */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaLock className="text-gray-400" />
+                  </div>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
+                    placeholder="Confirm Password"
+                    required
+                  />
+                </div>
+                {password !== confirmPassword && password && confirmPassword && (
+                  <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
+                )}
+              </div>
+              <div>
+                {/* Location input (optional) */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaMapMarkerAlt className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
+                    placeholder="Your Location (optional)"
+                  />
+                </div>
+              </div>
+              <div>
+                {/* Referral code input (optional) */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaGift className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-gray-50"
+                    placeholder="Referral Code (optional)"
+                  />
+                </div>
+              </div>
               <div className="flex items-center">
+                {/* Terms and conditions checkbox */}
                 <input 
                   id="terms"
                   type="checkbox" 
@@ -251,9 +398,10 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
               </div>
               <button 
                 type="submit"
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-medium py-3 px-4 rounded-lg transition-colors transform hover:-translate-y-0.5"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg disabled:bg-purple-400 disabled:cursor-not-allowed"
               >
-                Create Account
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
           )}
