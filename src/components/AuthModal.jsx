@@ -3,7 +3,7 @@ import { FaEnvelope, FaLock, FaUser, FaPhone, FaTimes, FaFacebook, FaGoogle, FaM
 import { authService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
-const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
+const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -79,7 +79,11 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
       if (response.success) {
         setIsLoggedIn(true);
         onClose();
-        navigate('/dashboard');
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(response.message || 'Login failed');
       }
@@ -131,7 +135,11 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn }) => {
       if (response.success) {
         setIsLoggedIn(true);
         onClose();
-        navigate('/dashboard');
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(response.message || 'Registration failed');
         

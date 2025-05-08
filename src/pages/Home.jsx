@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useCart } from '../contexts/CartContext';
 import { Link } from 'react-router-dom';
 import { 
   FaMapMarkerAlt, 
@@ -30,10 +31,23 @@ const Home = ({ setIsLoggedIn }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const { addToCart } = useCart();
+  
+  // Check if user is logged in
+  const [isLoggedIn, setIsLoggedInState] = useState(false);
+  
+  useEffect(() => {
+    // Check if token exists in localStorage
+    const token = localStorage.getItem('authToken');
+    setIsLoggedInState(!!token);
+  }, []);
   
   // Product state
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false); // For infinite scroll
+  const [page, setPage] = useState(1); // Current page
+  const [hasMore, setHasMore] = useState(true); // If more products are available
   const [scrollPosition, setScrollPosition] = useState(0);
   const [isHeaderFixed, setIsHeaderFixed] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -45,139 +59,72 @@ const Home = ({ setIsLoggedIn }) => {
       const position = window.scrollY;
       setScrollPosition(position);
       setIsHeaderFixed(position > 100);
+
+      // Infinite scroll: load more when near bottom
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 &&
+        !loadingMore &&
+        hasMore &&
+        !loading
+      ) {
+        loadMoreProducts();
+      }
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [loadingMore, hasMore, loading]);
 
-  // Fetch products
+  // Fetch products (first page)
   useEffect(() => {
-    const fetchFeaturedProducts = async () => {
-      try {
-        setLoading(true);
-        try {
-          const response = await productService.getProducts({ limit: 8 });
-          setFeaturedProducts(response.data || []);
-        } catch (err) {
-          console.log('API not available, using sample data');
-          // Sample data for development
-          setFeaturedProducts([
-            {
-              id: 1,
-              name: 'LPG 6kg Cylinder',
-              description: 'Standard 6kg LPG cylinder for home use',
-              selling_price: 1299,
-              category_id: 1,
-              category: 'Home Cylinders',
-              current_stock: 50,
-              rating: 4.8,
-              reviews: 42,
-              delivery_time: '30-60 min'
-            },
-            {
-              id: 2,
-              name: 'LPG 13kg Cylinder',
-              description: 'Large 13kg LPG cylinder for extended use',
-              selling_price: 2499,
-              category_id: 1,
-              category: 'Home Cylinders',
-              current_stock: 30,
-              rating: 4.9,
-              reviews: 38,
-              isNew: true,
-              delivery_time: '30-60 min'
-            },
-            {
-              id: 3,
-              name: 'LPG 22kg Cylinder',
-              description: 'Extra large 22kg LPG cylinder for commercial use',
-              selling_price: 3799,
-              category_id: 1,
-              category: 'Commercial Cylinders',
-              current_stock: 5,
-              rating: 4.5,
-              reviews: 24,
-              discount: 5,
-              delivery_time: '1-2 hours'
-            },
-            {
-              id: 4,
-              name: 'Standard Gas Regulator',
-              description: 'Universal gas regulator with hose',
-              selling_price: 899,
-              category_id: 2,
-              category: 'Accessories',
-              current_stock: 100,
-              rating: 4.6,
-              reviews: 31,
-              delivery_time: '30-60 min'
-            },
-            {
-              id: 5,
-              name: '2-Burner Gas Stove',
-              description: 'Efficient 2-burner gas stove for your kitchen',
-              selling_price: 4599,
-              category_id: 3,
-              category: 'Gas Stoves',
-              current_stock: 25,
-              rating: 4.9,
-              reviews: 56,
-              discount: 10,
-              originalPrice: 5099,
-              delivery_time: '1-2 hours'
-            },
-            {
-              id: 6,
-              name: 'Standard Gas Hose (1.5m)',
-              description: 'High-quality gas hose for safe connections',
-              selling_price: 699,
-              category_id: 4,
-              category: 'Accessories',
-              current_stock: 75,
-              rating: 4.7,
-              reviews: 19,
-              delivery_time: '30-60 min'
-            },
-            {
-              id: 7,
-              name: 'Digital Gas Detector',
-              description: 'Safety device to detect gas leaks in your home',
-              selling_price: 1899,
-              category_id: 2,
-              category: 'Safety Devices',
-              current_stock: 40,
-              rating: 4.8,
-              reviews: 27,
-              isNew: true,
-              delivery_time: '30-60 min'
-            },
-            {
-              id: 8,
-              name: '3-Burner Gas Stove (Premium)',
-              description: 'Luxury 3-burner gas stove with auto-ignition',
-              selling_price: 6999,
-              category_id: 3,
-              category: 'Gas Stoves',
-              current_stock: 15,
-              rating: 4.9,
-              reviews: 42,
-              isNew: true,
-              delivery_time: '1-2 hours'
-            }
-          ]);
-        }
-      } catch (error) {
-        console.error('Error fetching featured products:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFeaturedProducts();
+    setFeaturedProducts([]); // Reset products on mount
+    setPage(1);
+    setHasMore(true);
+    setLoading(true);
+    fetchFeaturedProducts(1, true);
+    // eslint-disable-next-line
   }, []);
+
+  // Fetch products function (with paging)
+  const fetchFeaturedProducts = async (pageToFetch = 1, isInitial = false) => {
+    try {
+      if (isInitial) setLoading(true);
+      else setLoadingMore(true);
+      const perPage = 30; // Number of products per page (increased to 30)
+      // Fetch products for the given page
+      const response = await productService.getProducts({ page: pageToFetch, per_page: perPage });
+      console.log('Home API Response:', response);
+      if (response && response.success && response.data) {
+        // Add a random rating for display purposes
+        const enhancedProducts = response.data.map(product => ({
+          ...product,
+          rating: (Math.floor(Math.random() * 10) + 40) / 10, // Random rating between 4.0-5.0
+          reviews: Math.floor(Math.random() * 50) + 10, // Random number of reviews
+          delivery_time: '30-60 min'
+        }));
+        setFeaturedProducts(prev => isInitial ? enhancedProducts : [...prev, ...enhancedProducts]);
+        // If less than perPage returned, no more products
+        setHasMore(response.data.length === perPage);
+        if (!isInitial) setPage(prev => prev + 1);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      setHasMore(false);
+    } finally {
+      if (isInitial) setLoading(false);
+      else setLoadingMore(false);
+    }
+  };
+
+  // Load more products for infinite scroll
+  const loadMoreProducts = () => {
+    if (!loadingMore && hasMore) {
+      fetchFeaturedProducts(page + 1, false);
+    }
+  };
 
   // Get unique categories
   const categories = ['All', ...new Set(featuredProducts.map(product => product.category))];
@@ -217,7 +164,7 @@ const Home = ({ setIsLoggedIn }) => {
       <Header 
         setIsAuthModalOpen={setIsAuthModalOpen} 
         setIsCartOpen={setIsCartOpen} 
-        isLoggedIn={false} 
+        isLoggedIn={isLoggedIn} 
         setIsLoggedIn={setIsLoggedIn}
       />
 
@@ -329,8 +276,6 @@ const Home = ({ setIsLoggedIn }) => {
         </div>
       </section>
 
-
-
       {/* Featured Products Section */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
@@ -403,7 +348,7 @@ const Home = ({ setIsLoggedIn }) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredProducts.slice(0, 9).map((product) => (
+                  {filteredProducts.map((product) => (
                 <div 
                   key={product.id}
                   className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 relative transform hover:-translate-y-1"
@@ -425,7 +370,7 @@ const Home = ({ setIsLoggedIn }) => {
                   {/* Product Image */}
                   <div className="bg-gray-50 p-6 h-48 flex items-center justify-center">
                     <img 
-                      src={`/api/placeholder/280/200?text=${encodeURIComponent(product.name)}`}
+                      src={product.image_url || `/api/placeholder/280/200?text=${encodeURIComponent(product.name)}`}
                       alt={product.name}
                       className="h-full object-contain max-w-full"
                     />
@@ -491,8 +436,10 @@ const Home = ({ setIsLoggedIn }) => {
                       </div>
                       
                       <button 
+                        onClick={() => addToCart(product, 1)}
                         className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
                         aria-label="Add to cart"
+                        disabled={product.current_stock <= 0}
                       >
                         <FaPlus size={16} />
                       </button>
@@ -500,6 +447,16 @@ const Home = ({ setIsLoggedIn }) => {
                   </div>
                 </div>
                   ))}
+                  {/* Infinite scroll loading spinner */}
+                  {loadingMore && (
+                    <div className="col-span-full flex justify-center py-6">
+                      {/* Simple spinner */}
+                      <svg className="animate-spin h-8 w-8 text-purple-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                      </svg>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -736,6 +693,8 @@ const Home = ({ setIsLoggedIn }) => {
       <CartSidebar 
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
+        isLoggedIn={isLoggedIn}
+        setIsLoggedIn={setIsLoggedIn}
       />
 
       {/* Product Detail Modal */}

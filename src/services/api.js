@@ -125,10 +125,27 @@ export const authService = {
 export const productService = {
   getProducts: async (params = {}) => {
     try {
-      const response = await api.get('/products', { params })
-      return response.data
+      console.log('API call to:', API_URL + '/products', 'with params:', params);
+      const response = await api.get('/products', { params });
+      console.log('Raw API response:', response);
+      return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      console.error('Error fetching products:', error);
+      // Check for different types of errors
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Server error response:', error.response.data);
+        throw error.response.data || { message: 'Server error occurred' };
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received:', error.request);
+        throw { message: 'No response from server. Please check your connection.' };
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Request setup error:', error.message);
+        throw { message: 'Network error occurred' };
+      }
     }
   },
   
@@ -137,9 +154,21 @@ export const productService = {
       const response = await api.get(`/products/${id}`)
       return response.data
     } catch (error) {
+      console.error('Error fetching product details:', error)
+      throw error.response?.data || { message: 'Network error occurred' }
+    }
+  },
+
+  getCategories: async () => {
+    try {
+      const response = await api.get('/categories')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching categories:', error)
       throw error.response?.data || { message: 'Network error occurred' }
     }
   }
+
 }
 
 // Order Services
@@ -170,6 +199,18 @@ export const orderService = {
       return response.data
     } catch (error) {
       throw error.response?.data || { message: 'Network error occurred' }
+    }
+  },
+
+  processCheckout: async (checkoutData) => {
+    try {
+      console.log('Sending checkout data to API:', checkoutData);
+      const response = await api.post('/checkout', checkoutData);
+      console.log('Checkout API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Checkout error:', error);
+      throw error.response?.data || { message: 'Network error occurred' };
     }
   }
 }

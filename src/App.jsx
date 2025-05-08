@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { CartProvider } from './contexts/CartContext'
 
 // Import Pages
 import Home from './pages/Home'
 import Products from './pages/Products'
+import Checkout from './pages/Checkout'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
 import Profile from './pages/Profile'
@@ -30,11 +32,17 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Toaster position="top-right" />
-      <Routes>
+    <CartProvider>
+      <div className="min-h-screen flex flex-col">
+        <Toaster position="top-right" />
+        <Routes>
           <Route path="/" element={<Home setIsLoggedIn={setIsLoggedIn} />} />
           <Route path="/products" element={<Products setIsLoggedIn={setIsLoggedIn} />} />
+          <Route path="/checkout" element={
+            <ProtectedRoute isLoggedIn={isLoggedIn}>
+              <Checkout />
+            </ProtectedRoute>
+          } />
           
           {/* Protected Routes */}
           <Route path="/orders" element={
@@ -60,8 +68,9 @@ function App() {
           
           {/* 404 Route */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-    </div>
+          </Routes>
+      </div>
+    </CartProvider>
   )
 }
 
