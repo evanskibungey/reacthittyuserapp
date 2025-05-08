@@ -27,6 +27,11 @@ const Products = ({ setIsLoggedIn }) => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
   
+  // Function to navigate to cart
+  const handleNavigateToCart = () => {
+    setIsCartOpen(true); // Open the cart sidebar
+  };
+  
   // Check if user is logged in
   const [isLoggedIn, setIsLoggedInState] = useState(false);
   
@@ -401,7 +406,7 @@ const Products = ({ setIsLoggedIn }) => {
                     <div key={`top-${product.id}`} className="flex">
                       <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         <img 
-                          src={product.image_url || `/api/placeholder/100/100?text=${encodeURIComponent(product.name.substring(0, 10))}`}
+                          src={product.image_url || `https://via.placeholder.com/100x100.png?text=${encodeURIComponent(product.name.substring(0, 10))}`}
                           alt={product.name}
                           className="w-full h-full object-contain p-2"
                         />
@@ -494,7 +499,7 @@ const Products = ({ setIsLoggedIn }) => {
                   {filteredProducts.map((product) => (
                     <div 
                       key={product.id}
-                      className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 relative transform hover:-translate-y-1"
+                      className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 relative transform hover:-translate-y-1 border border-gray-100"
                     >
                       {/* Product Tags */}
                       <div className="absolute top-0 left-0 p-4 z-10 flex flex-col gap-2">
@@ -511,11 +516,11 @@ const Products = ({ setIsLoggedIn }) => {
                       </div>
                       
                       {/* Product Image */}
-                      <div className="bg-gray-50 p-6 h-48 flex items-center justify-center cursor-pointer" onClick={() => handleProductClick(product)}>
+                      <div className="bg-gradient-to-br from-purple-50 to-gray-50 p-6 h-60 flex items-center justify-center cursor-pointer group" onClick={() => handleProductClick(product)}>
                         <img 
-                          src={product.image_url || `/api/placeholder/280/200?text=${encodeURIComponent(product.name)}`}
+                          src={product.image_url || `https://via.placeholder.com/280x200.png?text=${encodeURIComponent(product.name)}`}
                           alt={product.name}
-                          className="h-full object-contain max-w-full"
+                          className="h-full object-contain max-w-full transition-transform duration-500 group-hover:scale-110"
                         />
                       </div>
                       
@@ -533,11 +538,11 @@ const Products = ({ setIsLoggedIn }) => {
                           </div>
                         </div>
                         
-                        <h3 className="font-medium text-lg mb-1 text-gray-900 cursor-pointer hover:text-purple-700 transition-colors" onClick={() => handleProductClick(product)}>
+                        <h3 className="font-medium text-lg mb-1 text-gray-900 cursor-pointer hover:text-purple-700 transition-colors line-clamp-1" onClick={() => handleProductClick(product)}>
                           {product.name}
                         </h3>
                         
-                        <p className="text-gray-500 text-sm mb-3 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical'}}>{product.description || 'No description available'}</p>
+                        <p className="text-gray-500 text-sm mb-3 line-clamp-2">{product.description || 'No description available'}</p>
                         
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center text-sm text-gray-500">
@@ -577,7 +582,7 @@ const Products = ({ setIsLoggedIn }) => {
                           
                           <button 
                             onClick={() => addToCart(product, 1)}
-                            className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
+                            className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:rotate-3 hover:shadow-md"
                             aria-label="Add to cart"
                             disabled={product.current_stock <= 0}
                           >
@@ -641,6 +646,7 @@ const Products = ({ setIsLoggedIn }) => {
         isOpen={isProductModalOpen}
         onClose={() => setIsProductModalOpen(false)}
         product={selectedProduct}
+        navigateToCart={handleNavigateToCart}
       />
     </div>
   );
