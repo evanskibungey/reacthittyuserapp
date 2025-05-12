@@ -205,11 +205,29 @@ export const orderService = {
   processCheckout: async (checkoutData) => {
     try {
       console.log('Sending checkout data to API:', checkoutData);
+      
+      // Format the items to match the expected backend format
+      // Remove any discount field from items to avoid the 'Column not found' error
+      if (checkoutData.items && Array.isArray(checkoutData.items)) {
+        checkoutData.items = checkoutData.items.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity
+          // Don't include discount or other fields not in database schema
+        }));
+      }
+      
       const response = await api.post('/checkout', checkoutData);
       console.log('Checkout API response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Checkout error:', error);
+      
+      // More detailed error logging
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+      }
+      
       throw error.response?.data || { message: 'Network error occurred' };
     }
   }

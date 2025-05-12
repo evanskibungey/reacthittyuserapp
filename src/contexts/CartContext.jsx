@@ -38,8 +38,9 @@ export const CartProvider = ({ children }) => {
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
           quantity: newQuantity,
-          subtotal: product.selling_price * newQuantity,
-          total: product.selling_price * newQuantity
+          // Only include backend fields that definitely exist
+          unit_price: product.selling_price,
+          subtotal: product.selling_price * newQuantity
         };
         return updatedItems;
       } else {
@@ -48,14 +49,12 @@ export const CartProvider = ({ children }) => {
           id: Date.now(), // Unique ID for cart item
           product_id: product.id,
           name: product.name,
-          price: product.selling_price,
+          price: product.selling_price, // Frontend display price
+          unit_price: product.selling_price, // Backend field
           image: product.image_url || `/api/placeholder/80/80?text=${encodeURIComponent(product.name.substring(0, 10))}`,
           category: product.category || '',
           quantity: quantity,
-          // Include these fields to match backend calculation format
-          subtotal: product.selling_price * quantity,
-          discount: 0,
-          total: product.selling_price * quantity
+          subtotal: product.selling_price * quantity
         }];
       }
     });
@@ -74,9 +73,9 @@ export const CartProvider = ({ children }) => {
           return { 
             ...item, 
             quantity,
-            subtotal,
-            discount: 0, // Reset any discount
-            total: subtotal // Update total
+            unit_price: item.price,
+            subtotal
+            // Remove any fields that don't exist in the database schema
           };
         }
         return item;

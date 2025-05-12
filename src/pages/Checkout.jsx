@@ -158,8 +158,9 @@ const Checkout = () => {
       // Prepare checkout data
       const checkoutData = {
         items: cartItems.map(item => ({
-          product_id: item.product_id,
+          product_id: item.id || item.product_id,
           quantity: item.quantity
+          // Don't include fields that don't exist in the schema
         })),
         payment_method: formData.paymentMethod,
         notes: `Delivery Address: ${formData.deliveryAddress}, Notes: ${formData.deliveryNotes}`,
