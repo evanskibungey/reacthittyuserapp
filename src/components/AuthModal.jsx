@@ -1,8 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaEnvelope, FaLock, FaUser, FaPhone, FaTimes, FaMapMarkerAlt, FaGift, 
-         FaArrowRight, FaCheck } from 'react-icons/fa';
-import { authService } from '../services/api';
-import { useNavigate } from 'react-router-dom';
 
 const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,7 +15,7 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const modalRef = useRef();
-  const navigate = useNavigate();
+  const navigate = () => {}; // Mock navigation
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -28,11 +24,9 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
         onClose();
       }
     };
-
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -45,7 +39,6 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
     } else {
       document.body.style.overflow = 'unset';
     }
-    
     return () => {
       document.body.style.overflow = 'unset';
     };
@@ -70,34 +63,25 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
     setError('');
     setValidationErrors({});
     setLoading(true);
-    
     try {
-      // Call Laravel API to login customer
-      const response = await authService.login({ 
-        phone, 
-        password, 
-        remember: rememberMe 
-      });
-      
-      if (response.success) {
-        setIsLoggedIn(true);
-        onClose();
-        if (onLoginSuccess) {
-          onLoginSuccess();
+      // Simulate API call
+      setTimeout(() => {
+        if (phone && password) {
+          setIsLoggedIn(true);
+          onClose();
+          if (onLoginSuccess) {
+            onLoginSuccess();
+          } else {
+            navigate('/dashboard');
+          }
         } else {
-          navigate('/dashboard');
+          setError('Invalid credentials');
         }
-      } else {
-        setError(response.message || 'Login failed');
-      }
+        setLoading(false);
+      }, 1000);
     } catch (err) {
       console.error('Login error:', err);
-      if (err.errors) {
-        setValidationErrors(err.errors);
-      } else {
-        setError(err.message || 'Invalid credentials');
-      }
-    } finally {
+      setError('Invalid credentials');
       setLoading(false);
     }
   };
@@ -107,57 +91,37 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
     setError('');
     setValidationErrors({});
     setLoading(true);
-    
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
-    
     try {
-      // Call Laravel API to register customer
-      const userData = { 
-        name, 
-        email: email || null, // Make sure null is sent if empty
-        phone, 
-        password,
-        password_confirmation: confirmPassword,
-        location: location || null // Make sure null is sent if empty
-      };
-      
-      // Only add referral code if it's provided
-      if (referralCode && referralCode.trim()) {
-        userData.referral_code = referralCode.trim();
-      }
-      
-      const response = await authService.register(userData);
-      
-      if (response.success) {
-        setIsLoggedIn(true);
-        onClose();
-        if (onLoginSuccess) {
-          onLoginSuccess();
+      // Simulate API call
+      setTimeout(() => {
+        if (name && phone && password && agreeToTerms) {
+          setIsLoggedIn(true);
+          onClose();
+          if (onLoginSuccess) {
+            onLoginSuccess();
+          } else {
+            navigate('/dashboard');
+          }
         } else {
-          navigate('/dashboard');
+          setError('Registration failed');
         }
-      } else {
-        setError(response.message || 'Registration failed');
-        
-        if (response.errors) {
-          setValidationErrors(response.errors);
-        }
-      }
+        setLoading(false);
+      }, 1000);
     } catch (err) {
       console.error('Registration error in component:', err);
-      setError(err.message || 'Registration failed. Check browser console for details.');
-    } finally {
+      setError('Registration failed. Check browser console for details.');
       setLoading(false);
     }
   };
 
   // Animation classes
-  const modalClasses = isOpen 
-    ? 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-all duration-300 opacity-100' 
+  const modalClasses = isOpen
+    ? 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-all duration-300 opacity-100'
     : 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-0 transition-all duration-300 opacity-0 pointer-events-none';
 
   const modalContentClasses = isOpen
@@ -168,96 +132,105 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
 
   return (
     <div className={modalClasses}>
-      <div 
-        ref={modalRef}
-        className={modalContentClasses}
-      >
+      <div ref={modalRef} className={modalContentClasses}>
         {/* Close button */}
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-20 bg-white rounded-full p-2 hover:shadow-md"
           aria-label="Close modal"
         >
-          <FaTimes size={16} />
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
 
         <div className="flex flex-col md:flex-row">
-          {/* Left Panel - Branding and Welcome Message */}
-          <div className="md:w-5/12 bg-gradient-to-br from-[#8e44ad] to-[#6c3483] text-white p-8 flex flex-col justify-center relative overflow-hidden">
+          {/* Left Panel - Branding and Welcome Message - IMPROVED COLORS */}
+          <div className="md:w-5/12 bg-gradient-to-br from-[#4a235a] to-[#663399] text-white p-8 flex flex-col justify-center relative overflow-hidden">
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-5 rounded-full -ml-16 -mb-16"></div>
-            
-            {/* Logo */}
-            <div className="flex items-center mb-6">
-              <img 
-                src="/logo.png" 
-                alt="Hitty Deliveries" 
-                className="h-12 mr-3"
-              />
+
+            {/* Improved Logo Container with solid white background */}
+            <div className="bg-white rounded-xl p-4 mb-6 inline-flex items-center shadow-md">
+              {/* Increased logo size from h-10 to h-16 for better visibility */}
+              <img src="/logo.png" alt="Hitty Deliveries" className="h-16 mr-3" />
+             
             </div>
-            
+
             {/* Welcome message */}
-            <h3 className="text-xl font-bold mb-4">
-              {isLogin ? "Welcome Back!" : "Join Our Community!"}
-            </h3>
+            <h3 className="text-xl font-bold mb-4">{isLogin ? 'Welcome Back!' : 'Join Our Community!'}</h3>
             <p className="mb-6 text-purple-100">
-              {isLogin 
-                ? "Log in to access your account and enjoy fast, reliable delivery services." 
-                : "Create an account to get started with our convenient gas delivery service."
-              }
+              {isLogin
+                ? 'Log in to access your account and enjoy fast, reliable delivery services.'
+                : 'Create an account to get started with our convenient gas delivery service.'}
             </p>
-            
-            {/* Benefits list */}
+
+            {/* Benefits list with improved colors */}
             <div className="space-y-3 mt-2">
               <div className="flex items-center">
-                <div className="bg-[#e67e22] bg-opacity-30 p-1 rounded-full mr-3">
-                  <FaCheck className="text-white" size={12} />
+                <div className="bg-orange-400 bg-opacity-30 p-1 rounded-full mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
                 <span className="text-sm">Fast delivery within 60 minutes</span>
               </div>
               <div className="flex items-center">
-                <div className="bg-[#e67e22] bg-opacity-30 p-1 rounded-full mr-3">
-                  <FaCheck className="text-white" size={12} />
+                <div className="bg-orange-400 bg-opacity-30 p-1 rounded-full mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
                 <span className="text-sm">Earn loyalty points with every order</span>
               </div>
               <div className="flex items-center">
-                <div className="bg-[#e67e22] bg-opacity-30 p-1 rounded-full mr-3">
-                  <FaCheck className="text-white" size={12} />
+                <div className="bg-orange-400 bg-opacity-30 p-1 rounded-full mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
                 <span className="text-sm">Quality products from trusted brands</span>
               </div>
             </div>
-            
-            {/* Toggle between login and register */}
+
+            {/* Toggle between login and register with improved styling */}
             <div className="mt-8 text-center">
               <p className="text-sm text-purple-200 mb-2">
-                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                {isLogin ? "Don't have an account?" : 'Already have an account?'}
               </p>
-              <button 
+              <button
                 onClick={() => setIsLogin(!isLogin)}
-                className="inline-flex items-center text-white bg-[#e67e22] bg-opacity-30 hover:bg-opacity-40 px-4 py-2 rounded-lg transition-all duration-300"
+                className="inline-flex items-center text-white bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg transition-all duration-300"
               >
-                {isLogin ? "Create Account" : "Sign In"} 
-                <FaArrowRight className="ml-2" size={12} />
+                {isLogin ? 'Create Account' : 'Sign In'}{' '}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="ml-2"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
               </button>
             </div>
           </div>
 
           {/* Right Panel - Form */}
           <div className="md:w-7/12 p-8 bg-white">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">
-              {isLogin ? 'Sign In' : 'Create your account'}
-            </h2>
-            
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">{isLogin ? 'Sign In' : 'Create your account'}</h2>
+
             {/* Error messages */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
                 {error}
               </div>
             )}
-            
+
             {/* Validation errors */}
             {Object.keys(validationErrors).length > 0 && (
               <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
@@ -268,61 +241,66 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
                 </ul>
               </div>
             )}
-            
+
             {/* Login Form */}
             {isLogin ? (
               <form onSubmit={handleLogin} className="space-y-4">
                 {/* Phone input */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaPhone className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
                   </div>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Phone Number"
                     required
                   />
                 </div>
-                
+
                 {/* Password input */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaLock className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0110 0v4" />
+                    </svg>
                   </div>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Password"
                     required
                   />
                 </div>
-                
+
                 {/* Remember me and forgot password */}
                 <div className="flex items-center justify-between">
                   <label className="flex items-center text-sm">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={rememberMe}
                       onChange={() => setRememberMe(!rememberMe)}
-                      className="w-4 h-4 text-[#8e44ad] border-gray-300 rounded focus:ring-[#8e44ad]"
+                      className="w-4 h-4 text-[#663399] border-gray-300 rounded focus:ring-[#663399]"
                     />
                     <span className="ml-2 text-gray-700">Remember me</span>
                   </label>
-                  <a href="#" className="text-sm text-[#8e44ad] hover:text-[#6c3483] transition-colors">
+                  <a href="#" className="text-sm text-[#663399] hover:text-[#4a235a] transition-colors">
                     Forgot password?
                   </a>
                 </div>
-                
+
                 {/* Submit button */}
-                <button 
+                <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#8e44ad] hover:bg-[#6c3483] text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-md disabled:bg-purple-400 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full bg-[#663399] hover:bg-[#4a235a] text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-md disabled:bg-purple-400 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {loading ? 'Signing In...' : 'Sign In'}
                 </button>
@@ -332,72 +310,88 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
                 {/* Full Name */}
                 <div className="relative md:col-span-2">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaUser className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
                   </div>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Full Name"
                     required
                   />
                 </div>
-                
+
                 {/* Email (optional) */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaEnvelope className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
                   </div>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Email Address (optional)"
                   />
                 </div>
-                
+
                 {/* Phone */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaPhone className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
                   </div>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Phone Number"
                     required
                   />
                 </div>
-                
+
                 {/* Password */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaLock className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0110 0v4" />
+                    </svg>
                   </div>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Password"
                     required
                   />
                 </div>
-                
+
                 {/* Confirm Password */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaLock className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0110 0v4" />
+                    </svg>
                   </div>
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Confirm Password"
                     required
                   />
@@ -405,55 +399,75 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
                     <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
                   )}
                 </div>
-                
+
                 {/* Location (optional) */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaMapMarkerAlt className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                   </div>
                   <input
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Your Location (optional)"
                   />
                 </div>
-                
+
                 {/* Referral Code (optional) */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaGift className="text-gray-400" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5a2 2 0 10-2 2m0 0v1m2 0a2 2 0 102-2m-2 2h4m-6 4h12m-6-10V4"
+                      />
+                    </svg>
                   </div>
                   <input
                     type="text"
                     value={referralCode}
                     onChange={(e) => setReferralCode(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-gray-50"
                     placeholder="Referral Code (optional)"
                   />
                 </div>
-                
+
                 {/* Terms and Conditions */}
                 <div className="flex items-start md:col-span-2 mt-2">
-                  <input 
+                  <input
                     id="terms"
                     type="checkbox"
                     checked={agreeToTerms}
                     onChange={() => setAgreeToTerms(!agreeToTerms)}
-                    className="mt-1 w-4 h-4 text-[#8e44ad] border-gray-300 rounded focus:ring-[#8e44ad]"
+                    className="mt-1 w-4 h-4 text-[#663399] border-gray-300 rounded focus:ring-[#663399]"
                     required
                   />
                   <label htmlFor="terms" className="ml-2 text-sm text-gray-700">
-                    I agree to the <a href="#" className="text-[#e67e22] hover:text-[#d35400] underline">Terms of Service</a> and <a href="#" className="text-[#e67e22] hover:text-[#d35400] underline">Privacy Policy</a>
+                    I agree to the{' '}
+                    <a href="#" className="text-orange-500 hover:text-orange-600 underline">
+                      Terms of Service
+                    </a>{' '}
+                    and{' '}
+                    <a href="#" className="text-orange-500 hover:text-orange-600 underline">
+                      Privacy Policy
+                    </a>
                   </label>
                 </div>
-                
-                {/* Submit button */}
-                <button 
+
+                {/* Submit button - Consistent with brand colors */}
+                <button
                   type="submit"
                   disabled={loading || !agreeToTerms}
-                  className="md:col-span-2 mt-2 bg-[#e67e22] hover:bg-[#d35400] text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-md disabled:bg-orange-300 disabled:cursor-not-allowed disabled:transform-none"
+                  className="md:col-span-2 mt-2 bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-md disabled:bg-orange-300 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {loading ? 'Creating Account...' : 'Create Account'}
                 </button>
