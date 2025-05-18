@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { Link } from 'react-router-dom';
 import { 
@@ -9,7 +9,9 @@ import {
   FaShoppingCart,
   FaUser,
   FaFilter,
-  FaArrowRight
+  FaArrowRight,
+  FaSearch,
+  FaTimes
 } from 'react-icons/fa';
 import { productService } from '../services/api';
 import AuthModal from '../components/AuthModal';
@@ -17,6 +19,33 @@ import CartSidebar from '../components/CartSidebar';
 import ProductDetailModal from '../components/ProductDetailModal';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import OptimizedImage from '../components/common/OptimizedImage';
+
+// Product Image Component with Progressive Loading
+const ProgressiveImage = ({ src, alt, className, width, height }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const placeholderSrc = `/api/placeholder/${width || 280}/${height || 200}?text=Loading...`;
+  
+  return (
+    <div className="relative overflow-hidden w-full h-full">
+      {/* Low quality placeholder */}
+      <div className={`absolute inset-0 ${isLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300 bg-gray-100 flex items-center justify-center`}>
+        <div className="animate-pulse bg-gray-200 rounded-lg w-full h-full"></div>
+      </div>
+      
+      {/* Actual image */}
+      <img
+        src={src || placeholderSrc}
+        alt={alt}
+        className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500 h-full w-full object-contain`}
+        width={width || 280}
+        height={height || 200}
+        loading="lazy"
+        onLoad={() => setIsLoaded(true)}
+      />
+    </div>
+  );
+};
 
 const Products = ({ setIsLoggedIn }) => {
   const { addToCart } = useCart();
@@ -42,18 +71,60 @@ const Products = ({ setIsLoggedIn }) => {
   }, []);
 
   // Products state
-  const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [displayedProducts, setDisplayedProducts] = useState([]);
   const [categories, setCategories] = useState(['All']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const [sortBy, setSortBy] = useState('featured');
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
   const [totalProducts, setTotalProducts] = useState(0);
+  
+  // Virtual Scrolling for better performance with large lists
+  const [visibleProducts, setVisibleProducts] = useState([]);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const ITEMS_PER_PAGE = 12; // Load 12 items at a time
+  const LOAD_THRESHOLD = 800; // px from bottom to trigger load more
+  
+  // Handle scroll and load more products as user scrolls
+  useEffect(() => {
+    const handleScroll = () => {
+      const position = window.scrollY;
+      setScrollPosition(position);
+      
+      // Near bottom of page? Load more products
+      const nearBottom = 
+        window.innerHeight + window.pageYOffset >= 
+        document.body.offsetHeight - LOAD_THRESHOLD;
+        
+      if (nearBottom && !loading && visibleProducts.length < displayedProducts.length) {
+        loadMoreItems();
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [displayedProducts, visibleProducts, loading]);
+  
+  // Load initial batch of products when displayedProducts changes
+  useEffect(() => {
+    setVisibleProducts(displayedProducts.slice(0, ITEMS_PER_PAGE));
+  }, [displayedProducts]);
+  
+  // Load more items function
+  const loadMoreItems = useCallback(() => {
+    setVisibleProducts(prev => {
+      const nextBatch = displayedProducts.slice(0, prev.length + ITEMS_PER_PAGE);
+      return nextBatch;
+    });
+  }, [displayedProducts]);
+  
+  // Memoize expensive calculations
+  const hasMoreItemsToLoad = useMemo(() => {
+    return visibleProducts.length < displayedProducts.length;
+  }, [visibleProducts, displayedProducts]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -73,73 +144,29 @@ const Products = ({ setIsLoggedIn }) => {
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchAllProducts = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Prepare parameters for the API call
-        const params = {
-          page: currentPage,
-          per_page: 12
-        };
+        // Get all products with a large per_page value
+        const response = await productService.getProducts({ per_page: 999 });
+        console.log('API Response:', response);
         
-        // Add category filter if not "All"
-        if (activeCategory !== 'All') {
-          // Find the category ID by name
-          // If you have category IDs, you would use them directly
-          params.category = activeCategory;
-        }
-        
-        // Add price range filter
-        params.min_price = priceRange[0];
-        params.max_price = priceRange[1];
-        
-        // Add sorting
-        switch (sortBy) {
-          case 'price-low':
-            params.sort_by = 'selling_price';
-            params.sort_dir = 'asc';
-            break;
-          case 'price-high':
-            params.sort_by = 'selling_price';
-            params.sort_dir = 'desc';
-            break;
-          default: // 'featured'
-            params.sort_by = 'name';
-            params.sort_dir = 'asc';
-            break;
-        }
-        
-        try {
-          console.log('Fetching products with params:', params);
-          const response = await productService.getProducts(params);
-          console.log('API Response:', response);
+        if (response && response.success) {
+          // Add a random rating for display purposes
+          const enhancedProducts = response.data.map(product => ({
+            ...product,
+            rating: (Math.floor(Math.random() * 10) + 40) / 10, // Random rating between 4.0-5.0
+            reviews: Math.floor(Math.random() * 50) + 10, // Random number of reviews
+            delivery_time: '30-60 min'
+          }));
           
-          if (response && response.success) {
-            // Add a random rating for display purposes
-            const enhancedProducts = response.data.map(product => ({
-              ...product,
-              rating: (Math.floor(Math.random() * 10) + 40) / 10, // Random rating between 4.0-5.0
-              reviews: Math.floor(Math.random() * 50) + 10, // Random number of reviews
-              delivery_time: '30-60 min'
-            }));
-            
-            setProducts(enhancedProducts);
-            
-            // Update pagination info
-            if (response.meta) {
-              setCurrentPage(response.meta.current_page);
-              setTotalPages(response.meta.last_page);
-              setTotalProducts(response.meta.total);
-            }
-          } else {
-            // Fallback to sample data if API response is invalid
-            console.log('Invalid API response, using sample data');
-            useSampleData();
-          }
-        } catch (err) {
-          console.log('API error, using sample data', err);
+          setAllProducts(enhancedProducts);
+          setTotalProducts(response.data.length);
+        } else {
+          // Fallback to sample data if API response is invalid
+          console.log('Invalid API response, using sample data');
           useSampleData();
         }
       } catch (error) {
@@ -231,14 +258,58 @@ const Products = ({ setIsLoggedIn }) => {
           delivery_time: '30-60 min'
         }
       ];
-      setProducts(sampleProducts);
+      setAllProducts(sampleProducts);
+      setTotalProducts(sampleProducts.length);
     };
 
-    fetchProducts();
-  }, [currentPage, activeCategory, priceRange, sortBy]);
+    fetchAllProducts();
+  }, []);
 
-  // Filter and sort products - this is now mostly handled by the backend API
-  const filteredProducts = products;
+  // Filter products based on category, price range, and search term
+  useEffect(() => {
+    let filtered = [...allProducts];
+    
+    // Filter by category
+    if (activeCategory !== 'All') {
+      filtered = filtered.filter(product => product.category === activeCategory);
+    }
+    
+    // Filter by price range
+    filtered = filtered.filter(product => 
+      product.selling_price >= priceRange[0] && 
+      product.selling_price <= priceRange[1]
+    );
+    
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(product => {
+        return (
+          product.name.toLowerCase().includes(searchLower) ||
+          (product.description && product.description.toLowerCase().includes(searchLower)) ||
+          (product.category && product.category.toLowerCase().includes(searchLower))
+        );
+      });
+    }
+    
+    // Sort products
+    switch (sortBy) {
+      case 'price-low':
+        filtered.sort((a, b) => a.selling_price - b.selling_price);
+        break;
+      case 'price-high':
+        filtered.sort((a, b) => b.selling_price - a.selling_price);
+        break;
+      case 'rating':
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      default: // 'featured'
+        // Keep original order
+        break;
+    }
+    
+    setDisplayedProducts(filtered);
+  }, [allProducts, activeCategory, priceRange, searchTerm, sortBy]);
 
   // Handle product click
   const handleProductClick = (product) => {
@@ -264,42 +335,12 @@ const Products = ({ setIsLoggedIn }) => {
     );
   };
 
-  // Pagination controls
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  // Function to render pagination buttons
-  const renderPaginationButtons = () => {
-    return Array.from({ length: totalPages }, (_, i) => i + 1)
-      .filter(page => (
-        page === 1 || 
-        page === totalPages || 
-        (page >= currentPage - 1 && page <= currentPage + 1)
-      ))
-      .map((page, index, array) => {
-        return (
-          <React.Fragment key={page}>
-            {index > 0 && array[index - 1] !== page - 1 && (
-              <span className="mx-1 text-gray-500">...</span>
-            )}
-            <button 
-              onClick={() => setCurrentPage(page)}
-              className={`w-10 h-10 mx-1 rounded-lg ${currentPage === page ? 'bg-purple-700 text-white' : 'bg-white text-gray-700 hover:bg-purple-50'}`}
-            >
-              {page}
-            </button>
-          </React.Fragment>
-        );
-      });
+  // Reset all filters
+  const resetFilters = () => {
+    setActiveCategory('All');
+    setPriceRange([0, 10000]);
+    setSortBy('featured');
+    setSearchTerm('');
   };
 
   return (
@@ -337,8 +378,11 @@ const Products = ({ setIsLoggedIn }) => {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Sidebar Filters - Hidden on mobile unless toggled */}
           <div className={`md:w-1/4 ${filterOpen ? 'block' : 'hidden md:block'}`}>
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h2 className="font-bold text-lg mb-4">Categories</h2>
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6 transition-all hover:shadow-md">
+              <h2 className="font-bold text-lg mb-4 flex items-center">
+                <span className="w-1.5 h-6 bg-purple-500 rounded-full mr-2"></span>
+                Categories
+              </h2>
               <ul className="space-y-2">
                 {categories.map((category) => (
                   <li key={category} className="flex items-center">
@@ -358,8 +402,11 @@ const Products = ({ setIsLoggedIn }) => {
               </ul>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h2 className="font-bold text-lg mb-4">Price Range</h2>
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6 transition-all hover:shadow-md">
+              <h2 className="font-bold text-lg mb-4 flex items-center">
+                <span className="w-1.5 h-6 bg-purple-500 rounded-full mr-2"></span>
+                Price Range
+              </h2>
               <div className="mb-4">
                 <div className="flex justify-between mb-2">
                   <span>KSh {priceRange[0].toLocaleString()}</span>
@@ -393,22 +440,27 @@ const Products = ({ setIsLoggedIn }) => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 transition-all hover:shadow-md">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-lg">Top Rated</h2>
+                <h2 className="font-bold text-lg flex items-center">
+                  <span className="w-1.5 h-6 bg-purple-500 rounded-full mr-2"></span>
+                  Top Rated
+                </h2>
                 <Link to="#" className="text-purple-700 text-sm hover:underline">View All</Link>
               </div>
               <div className="space-y-4">
-                {products
+                {allProducts
                   .sort((a, b) => b.rating - a.rating)
                   .slice(0, 3)
                   .map(product => (
                     <div key={`top-${product.id}`} className="flex">
                       <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                        <img 
-                          src={product.image_url || `https://via.placeholder.com/100x100.png?text=${encodeURIComponent(product.name.substring(0, 10))}`}
+                        <ProgressiveImage 
+                          src={product.image_url || `/api/placeholder/100/100?text=${encodeURIComponent(product.name.substring(0, 10))}`}
                           alt={product.name}
-                          className="w-full h-full object-contain p-2"
+                          className="w-full h-full p-2"
+                          width={100}
+                          height={100}
                         />
                       </div>
                       <div className="ml-3">
@@ -432,25 +484,106 @@ const Products = ({ setIsLoggedIn }) => {
 
           {/* Product Grid */}
           <div className="md:w-3/4">
-            {/* Sort and Results Count */}
-            <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center justify-between">
-              <p className="text-gray-600">
-                Showing <span className="font-medium">{filteredProducts.length}</span> products
-                {activeCategory !== 'All' ? ` in "${activeCategory}"` : ''}
-                {totalProducts > 0 && ` of ${totalProducts} total`}
-              </p>
-              <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-                <span className="text-gray-600">Sort by:</span>
-                <select 
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="featured">Featured</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                </select>
+            {/* Search and Sort */}
+            <div className="bg-white p-4 rounded-lg shadow-sm mb-6 transition-all hover:shadow-md">
+              {/* Search Bar */}
+              <div className="mb-4">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaSearch className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search products by name, description, or category..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 shadow-sm transition-all focus:shadow"
+                  />
+                  {searchTerm && (
+                    <button 
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      onClick={() => setSearchTerm('')}
+                    >
+                      <FaTimes />
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Sort and Results Count */}
+              <div className="flex flex-wrap items-center justify-between">
+                <p className="text-gray-600">
+                  Showing <span className="font-medium">{displayedProducts.length}</span> products
+                  {activeCategory !== 'All' ? ` in "${activeCategory}"` : ''}
+                  {searchTerm ? ` matching "${searchTerm}"` : ''}
+                  {totalProducts > 0 && ` of ${totalProducts} total`}
+                </p>
+                <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                  <span className="text-gray-600">Sort by:</span>
+                  <select 
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="featured">Featured</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Rating</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Active filters */}
+              {(activeCategory !== 'All' || searchTerm || priceRange[0] > 0 || priceRange[1] < 10000) && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-gray-500 text-sm">Active filters:</span>
+                    
+                    {activeCategory !== 'All' && (
+                      <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded flex items-center">
+                        Category: {activeCategory}
+                        <button 
+                          onClick={() => setActiveCategory('All')} 
+                          className="ml-1 hover:text-purple-600"
+                        >
+                          <FaTimes size={10} />
+                        </button>
+                      </span>
+                    )}
+                    
+                    {(priceRange[0] > 0 || priceRange[1] < 10000) && (
+                      <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded flex items-center">
+                        Price: KSh {priceRange[0].toLocaleString()} - KSh {priceRange[1].toLocaleString()}
+                        <button 
+                          onClick={() => setPriceRange([0, 10000])} 
+                          className="ml-1 hover:text-purple-600"
+                        >
+                          <FaTimes size={10} />
+                        </button>
+                      </span>
+                    )}
+
+                    {searchTerm && (
+                      <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded flex items-center">
+                        Search: {searchTerm}
+                        <button 
+                          onClick={() => setSearchTerm('')} 
+                          className="ml-1 hover:text-purple-600"
+                        >
+                          <FaTimes size={10} />
+                        </button>
+                      </span>
+                    )}
+                    
+                    <button 
+                      onClick={resetFilters}
+                      className="text-purple-700 text-xs font-medium ml-auto hover:underline"
+                    >
+                      Clear All Filters
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {loading ? (
@@ -471,23 +604,19 @@ const Products = ({ setIsLoggedIn }) => {
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
                 {error}
               </div>
-            ) : filteredProducts.length === 0 ? (
+            ) : displayedProducts.length === 0 ? (
               <div className="bg-white rounded-lg p-8 text-center">
                 <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <FaSearch className="w-full h-full" />
                 </div>
                 <h3 className="text-xl font-medium text-gray-900 mb-2">No products found</h3>
                 <p className="text-gray-600 mb-4">
-                  We couldn't find any products matching your criteria. Try adjusting your filters.
+                  {searchTerm 
+                    ? `We couldn't find any products matching "${searchTerm}"`
+                    : "We couldn't find any products matching your criteria. Try adjusting your filters."}
                 </p>
                 <button 
-                  onClick={() => {
-                    setActiveCategory('All');
-                    setPriceRange([0, 10000]);
-                    setSortBy('featured');
-                  }}
+                  onClick={resetFilters}
                   className="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg transition-colors"
                 >
                   Reset Filters
@@ -496,7 +625,7 @@ const Products = ({ setIsLoggedIn }) => {
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredProducts.map((product) => (
+                  {visibleProducts.map((product) => (
                     <div 
                       key={product.id}
                       className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 relative transform hover:-translate-y-1 border border-gray-100"
@@ -517,10 +646,12 @@ const Products = ({ setIsLoggedIn }) => {
                       
                       {/* Product Image */}
                       <div className="bg-gradient-to-br from-purple-50 to-gray-50 p-6 h-60 flex items-center justify-center cursor-pointer group" onClick={() => handleProductClick(product)}>
-                        <img 
-                          src={product.image_url || `https://via.placeholder.com/280x200.png?text=${encodeURIComponent(product.name)}`}
+                        <ProgressiveImage 
+                          src={product.image_url || `/api/placeholder/280/200?text=${encodeURIComponent(product.name)}`}
                           alt={product.name}
-                          className="h-full object-contain max-w-full transition-transform duration-500 group-hover:scale-110"
+                          className="h-full max-w-full transition-transform duration-500 group-hover:scale-110"
+                          width={280}
+                          height={200}
                         />
                       </div>
                       
@@ -582,7 +713,7 @@ const Products = ({ setIsLoggedIn }) => {
                           
                           <button 
                             onClick={() => addToCart(product, 1)}
-                            className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:rotate-3 hover:shadow-md"
+                            className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:rotate-3 hover:shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed"
                             aria-label="Add to cart"
                             disabled={product.current_stock <= 0}
                           >
@@ -594,27 +725,18 @@ const Products = ({ setIsLoggedIn }) => {
                   ))}
                 </div>
                 
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center items-center mt-8">
+                {/* Load more indicator */}
+                {hasMoreItemsToLoad && (
+                  <div className="flex justify-center my-8">
                     <button 
-                      onClick={handlePrevPage}
-                      disabled={currentPage === 1}
-                      className={`px-4 py-2 mr-2 rounded-lg border ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-purple-700 hover:bg-purple-50 border-purple-200'}`}
+                      onClick={loadMoreItems}
+                      className="bg-white hover:bg-purple-50 text-purple-700 font-medium py-2 px-4 border border-purple-300 rounded-lg shadow-sm transition-colors flex items-center"
                     >
-                      Previous
-                    </button>
-                    
-                    <div className="flex items-center">
-                      {renderPaginationButtons()}
-                    </div>
-                    
-                    <button 
-                      onClick={handleNextPage}
-                      disabled={currentPage === totalPages}
-                      className={`px-4 py-2 ml-2 rounded-lg border ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-purple-700 hover:bg-purple-50 border-purple-200'}`}
-                    >
-                      Next
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-purple-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Load More Products
                     </button>
                   </div>
                 )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { Link } from 'react-router-dom';
 import { 
@@ -16,7 +16,9 @@ import {
   FaCreditCard,
   FaArrowRight,
   FaClock,
-  FaWhatsapp
+  FaWhatsapp,
+  FaFilter,
+  FaTimes
 } from 'react-icons/fa';
 import { productService } from '../services/api';
 import AuthModal from '../components/AuthModal';
@@ -24,6 +26,7 @@ import CartSidebar from '../components/CartSidebar';
 import ProductDetailModal from '../components/ProductDetailModal';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import OptimizedImage from '../components/common/OptimizedImage';
 
 const Home = ({ setIsLoggedIn }) => {
   // State for modals and sidebars
@@ -48,11 +51,10 @@ const Home = ({ setIsLoggedIn }) => {
   }, []);
   
   // Product state
-  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [displayedProducts, setDisplayedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false); // For infinite scroll
-  const [page, setPage] = useState(1); // Current page
-  const [hasMore, setHasMore] = useState(true); // If more products are available
+  const [searchTerm, setSearchTerm] = useState('');
   const [scrollPosition, setScrollPosition] = useState(0);
   const [isHeaderFixed, setIsHeaderFixed] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -64,42 +66,26 @@ const Home = ({ setIsLoggedIn }) => {
       const position = window.scrollY;
       setScrollPosition(position);
       setIsHeaderFixed(position > 100);
-
-      // Infinite scroll: load more when near bottom
-      if (
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 &&
-        !loadingMore &&
-        hasMore &&
-        !loading
-      ) {
-        loadMoreProducts();
-      }
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [loadingMore, hasMore, loading]);
-
-  // Fetch products (first page)
-  useEffect(() => {
-    setFeaturedProducts([]); // Reset products on mount
-    setPage(1);
-    setHasMore(true);
-    setLoading(true);
-    fetchFeaturedProducts(1, true);
-    // eslint-disable-next-line
   }, []);
 
-  // Fetch products function (with paging)
-  const fetchFeaturedProducts = async (pageToFetch = 1, isInitial = false) => {
+  // Fetch all products (no pagination)
+  useEffect(() => {
+    setLoading(true);
+    fetchAllProducts();
+  }, []);
+
+  // Fetch products function (get all products)
+  const fetchAllProducts = async () => {
     try {
-      if (isInitial) setLoading(true);
-      else setLoadingMore(true);
-      const perPage = 30; // Number of products per page (increased to 30)
-      // Fetch products for the given page
-      const response = await productService.getProducts({ page: pageToFetch, per_page: perPage });
+      setLoading(true);
+      // Get all products without pagination by setting a very large limit
+      const response = await productService.getProducts({ per_page: 999 });
       console.log('Home API Response:', response);
       if (response && response.success && response.data) {
         // Add a random rating for display purposes
@@ -109,35 +95,42 @@ const Home = ({ setIsLoggedIn }) => {
           reviews: Math.floor(Math.random() * 50) + 10, // Random number of reviews
           delivery_time: '30-60 min'
         }));
-        setFeaturedProducts(prev => isInitial ? enhancedProducts : [...prev, ...enhancedProducts]);
-        // If less than perPage returned, no more products
-        setHasMore(response.data.length === perPage);
-        if (!isInitial) setPage(prev => prev + 1);
-      } else {
-        setHasMore(false);
+        setAllProducts(enhancedProducts);
+        setDisplayedProducts(enhancedProducts); // Initially show all products
       }
     } catch (error) {
-      setHasMore(false);
+      console.error('Error fetching products:', error);
     } finally {
-      if (isInitial) setLoading(false);
-      else setLoadingMore(false);
-    }
-  };
-
-  // Load more products for infinite scroll
-  const loadMoreProducts = () => {
-    if (!loadingMore && hasMore) {
-      fetchFeaturedProducts(page + 1, false);
+      setLoading(false);
     }
   };
 
   // Get unique categories
-  const categories = ['All', ...new Set(featuredProducts.map(product => product.category))];
+  const categories = ['All', ...new Set(allProducts.map(product => product.category))];
 
-  // Filter products by category
-  const filteredProducts = activeCategory === 'All' 
-    ? featuredProducts 
-    : featuredProducts.filter(product => product.category === activeCategory);
+  // Filter products by search term and category
+  useEffect(() => {
+    let filtered = allProducts;
+    
+    // Filter by category first
+    if (activeCategory !== 'All') {
+      filtered = filtered.filter(product => product.category === activeCategory);
+    }
+    
+    // Then filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(product => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          product.name.toLowerCase().includes(searchLower) ||
+          (product.description && product.description.toLowerCase().includes(searchLower)) ||
+          (product.category && product.category.toLowerCase().includes(searchLower))
+        );
+      });
+    }
+    
+    setDisplayedProducts(filtered);
+  }, [allProducts, activeCategory, searchTerm]);
 
   // Handle product click
   const handleProductClick = (product) => {
@@ -177,11 +170,13 @@ const Home = ({ setIsLoggedIn }) => {
       <section className="relative py-24 md:py-32 text-white overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
-          <img 
-            src="/heroimg.png" 
-            alt="Hero Background" 
-            className="w-full h-full object-cover"
-          />
+          <OptimizedImage 
+          src="/heroimg.png" 
+          alt="Hero Background" 
+          className="w-full h-full"
+            objectFit="cover"
+                    priority={true} /* Load hero image with high priority since it's above the fold */
+                  />
           {/* Enhanced Gradient Overlay with texture */}
           <div 
             className="absolute inset-0 bg-gradient-to-l from-[#4a235a]/95 via-[#663399]/90 to-[#663399]/80 z-0" 
@@ -241,8 +236,8 @@ const Home = ({ setIsLoggedIn }) => {
                 {/* User avatars */}
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map(num => (
-                    <div key={num} className="w-10 h-10 rounded-full bg-gray-300 border-2 border-white overflow-hidden shadow-md">
-                      <img src={`https://via.placeholder.com/40x40.png?text=${num}`} alt="User" className="w-full h-full object-cover" />
+                    <div key={num} className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold border-2 border-white overflow-hidden shadow-md">
+                      {['JD', 'SM', 'AK', 'TP'][num-1]}
                     </div>
                   ))}
                 </div>
@@ -361,20 +356,56 @@ const Home = ({ setIsLoggedIn }) => {
             
             {/* Products Grid - IMPROVED */}
             <div className="lg:w-3/4">
-              <div className="mb-6 flex justify-between items-center">
-                <p className="text-gray-600">Showing {filteredProducts.length} products {activeCategory !== 'All' ? `in ${activeCategory}` : ''}</p>
-                <div className="relative">
-                  <select className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent">
-                    <option>Sort by: Featured</option>
-                    <option>Price: Low to High</option>
-                    <option>Price: High to Low</option>
-                    <option>Rating</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                    </svg>
+              {/* Search and Sorting Bar */}
+              <div className="mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="flex flex-col md:flex-row justify-between gap-4">
+                  {/* Search Input */}
+                  <div className="flex-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaSearch className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search products by name, description, or category..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50"
+                    />
                   </div>
+                  
+                  {/* Sorting Dropdown */}
+                  <div className="relative w-full md:w-auto flex items-center">
+                    <div className="mr-2 text-gray-600 whitespace-nowrap">Sort by:</div>
+                    <select className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent flex-1 md:flex-none">
+                      <option>Featured</option>
+                      <option>Price: Low to High</option>
+                      <option>Price: High to Low</option>
+                      <option>Rating</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Search Results Count */}
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-gray-600">
+                    {displayedProducts.length === 0 && searchTerm 
+                      ? 'No products found matching your search' 
+                      : `Showing ${displayedProducts.length} products ${activeCategory !== 'All' ? `in ${activeCategory}` : ''}`}
+                  </p>
+                  
+                  {searchTerm && (
+                    <button 
+                      onClick={() => setSearchTerm('')}
+                      className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center"
+                    >
+                      Clear Search <FaTimes className="ml-1" />
+                    </button>
+                  )}
                 </div>
               </div>
           
@@ -393,114 +424,142 @@ const Home = ({ setIsLoggedIn }) => {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredProducts.map((product) => (
-                    <div 
-                      key={product.id}
-                      className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 relative transform hover:-translate-y-1 border border-gray-100 group"
-                    >
-                      {/* Product Tags */}
-                      <div className="absolute top-0 left-0 p-4 z-10 flex flex-col gap-2">
-                        {product.isNew && (
-                          <span className="bg-blue-500 text-white text-xs font-medium py-1 px-2 rounded-full shadow-md">
-                            NEW
-                          </span>
-                        )}
-                        {product.discount && (
-                          <span className="bg-orange-500 text-white text-xs font-medium py-1 px-2 rounded-full shadow-md">
-                            {product.discount}% OFF
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Product Image */}
-                      <div className="bg-gradient-to-br from-purple-50 to-gray-50 p-6 h-64 flex items-center justify-center cursor-pointer group-hover:from-purple-100 group-hover:to-white transition-all duration-300" onClick={() => handleProductClick(product)}>
-                        <img 
-                          src={product.image_url || `https://via.placeholder.com/280x200.png?text=${encodeURIComponent(product.name)}`}
-                          alt={product.name}
-                          className="h-full object-contain max-w-full transition-transform duration-500 group-hover:scale-110"
-                        />
-                      </div>
-                      
-                      {/* Product Details */}
-                      <div className="p-5">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-medium text-[#663399] bg-purple-50 px-2 py-1 rounded-full">
-                            {product.category}
-                          </span>
-                          <div className="flex items-center">
-                            <div className="flex text-yellow-400 items-center text-sm">
-                              <FaStar />
-                              <span className="ml-1 text-gray-700 font-medium">{product.rating}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <h3 className="font-medium text-lg mb-1 text-gray-900 cursor-pointer hover:text-[#663399] transition-colors line-clamp-1" onClick={() => handleProductClick(product)}>
-                          {product.name}
-                        </h3>
-                        
-                        <p className="text-gray-500 text-sm mb-3 line-clamp-2">{product.description || 'No description available'}</p>
-                        
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center text-sm text-gray-500">
-                            <FaClock className="text-[#663399] mr-1" />
-                            <span>{product.delivery_time}</span>
-                          </div>
-                          
-                          {product.current_stock > 10 ? (
-                            <span className="text-green-600 text-sm font-medium flex items-center">
-                              <div className="w-2 h-2 bg-green-600 rounded-full mr-1"></div>
-                              In Stock
-                            </span>
-                          ) : product.current_stock > 0 ? (
-                            <span className="text-orange-500 text-sm font-medium flex items-center">
-                              <div className="w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
-                              Low Stock
-                            </span>
-                          ) : (
-                            <span className="text-red-600 text-sm font-medium flex items-center">
-                              <div className="w-2 h-2 bg-red-600 rounded-full mr-1"></div>
-                              Out of Stock
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xl font-bold text-gray-900">KSh {product.selling_price.toLocaleString()}</span>
-                            {product.originalPrice && (
-                              <span className="text-sm text-gray-500 line-through ml-2">
-                                KSh {product.originalPrice.toLocaleString()}
+                <>
+                  {displayedProducts.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {displayedProducts.map((product) => (
+                        <div 
+                          key={product.id}
+                          className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 relative transform hover:-translate-y-1 border border-gray-100 group"
+                        >
+                          {/* Product Tags */}
+                          <div className="absolute top-0 left-0 p-4 z-10 flex flex-col gap-2">
+                            {product.isNew && (
+                              <span className="bg-blue-500 text-white text-xs font-medium py-1 px-2 rounded-full shadow-md">
+                                NEW
+                              </span>
+                            )}
+                            {product.discount && (
+                              <span className="bg-orange-500 text-white text-xs font-medium py-1 px-2 rounded-full shadow-md">
+                                {product.discount}% OFF
                               </span>
                             )}
                           </div>
                           
-                          <button 
-                            onClick={() => addToCart(product, 1)}
-                            className="bg-[#663399] hover:bg-[#4a235a] text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            aria-label="Add to cart"
-                            disabled={product.current_stock <= 0}
-                          >
-                            <FaPlus size={16} />
-                          </button>
+                          {/* Product Image */}
+                          <div className="bg-gradient-to-br from-purple-50 to-gray-50 p-6 h-64 flex items-center justify-center cursor-pointer group-hover:from-purple-100 group-hover:to-white transition-all duration-300" onClick={() => handleProductClick(product)}>
+                            <OptimizedImage 
+                              src={product.image_url || `/api/placeholder/280/200?text=${encodeURIComponent(product.name)}`}
+                              alt={product.name}
+                              className="h-full max-w-full transition-transform duration-500 group-hover:scale-110"
+                              objectFit="contain"
+                              width={280}
+                              height={200}
+                            />
+                          </div>
+                          
+                          {/* Product Details */}
+                          <div className="p-5">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-[#663399] bg-purple-50 px-2 py-1 rounded-full">
+                                {product.category}
+                              </span>
+                              <div className="flex items-center">
+                                <div className="flex text-yellow-400 items-center text-sm">
+                                  <FaStar />
+                                  <span className="ml-1 text-gray-700 font-medium">{product.rating}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <h3 className="font-medium text-lg mb-1 text-gray-900 cursor-pointer hover:text-[#663399] transition-colors line-clamp-1" onClick={() => handleProductClick(product)}>
+                              {product.name}
+                            </h3>
+                            
+                            <p className="text-gray-500 text-sm mb-3 line-clamp-2">{product.description || 'No description available'}</p>
+                            
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center text-sm text-gray-500">
+                                <FaClock className="text-[#663399] mr-1" />
+                                <span>{product.delivery_time}</span>
+                              </div>
+                              
+                              {product.current_stock > 10 ? (
+                                <span className="text-green-600 text-sm font-medium flex items-center">
+                                  <div className="w-2 h-2 bg-green-600 rounded-full mr-1"></div>
+                                  In Stock
+                                </span>
+                              ) : product.current_stock > 0 ? (
+                                <span className="text-orange-500 text-sm font-medium flex items-center">
+                                  <div className="w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
+                                  Low Stock
+                                </span>
+                              ) : (
+                                <span className="text-red-600 text-sm font-medium flex items-center">
+                                  <div className="w-2 h-2 bg-red-600 rounded-full mr-1"></div>
+                                  Out of Stock
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-xl font-bold text-gray-900">KSh {product.selling_price.toLocaleString()}</span>
+                                {product.originalPrice && (
+                                  <span className="text-sm text-gray-500 line-through ml-2">
+                                    KSh {product.originalPrice.toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <button 
+                                onClick={() => addToCart(product, 1)}
+                                className="bg-[#663399] hover:bg-[#4a235a] text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                aria-label="Add to cart"
+                                disabled={product.current_stock <= 0}
+                              >
+                                <FaPlus size={16} />
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                  {/* Infinite scroll loading spinner */}
-                  {loadingMore && (
+                  ) : (
+                    /* No products found message */
+                    <div className="text-center py-20 bg-white rounded-xl border border-gray-100 shadow-sm">
+                      <FaSearch className="mx-auto text-gray-300 text-5xl mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-700 mb-2">No products found</h3>
+                      <p className="text-gray-500 mb-6">
+                        {searchTerm 
+                          ? `We couldn't find any products matching "${searchTerm}"` 
+                          : 'No products available in this category'}
+                      </p>
+                      <button 
+                        onClick={() => {
+                          setSearchTerm('');
+                          setActiveCategory('All');
+                        }}
+                        className="bg-[#663399] hover:bg-[#4a235a] text-white font-medium py-2 px-6 rounded-lg transition-all"
+                      >
+                        View All Products
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Loading spinner shown during API requests */}
+                  {loading && (
                     <div className="col-span-full flex justify-center py-6">
                       <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-[#663399] transition ease-in-out duration-150">
                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Loading more products...
+                        Loading products...
                       </div>
                     </div>
                   )}
-                </div>
+                </>
               )}
               
               <div className="mt-12 text-center">
@@ -620,8 +679,8 @@ const Home = ({ setIsLoggedIn }) => {
                   {/* App users */}
                   <div className="flex -space-x-3">
                     {[1, 2, 3, 4].map(num => (
-                      <div key={num} className="w-10 h-10 rounded-full bg-gray-300 border-2 border-[#663399] overflow-hidden shadow-md">
-                        <img src={`https://via.placeholder.com/40x40.png?text=${num}`} alt="User" className="w-full h-full object-cover" />
+                      <div key={num} className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold border-2 border-[#663399] overflow-hidden shadow-md">
+                        {['JD', 'SM', 'AK', 'TP'][num-1]}
                       </div>
                     ))}
                   </div>
@@ -636,10 +695,12 @@ const Home = ({ setIsLoggedIn }) => {
                 <div className="relative">
                   {/* Phone mockup with shadow and reflection */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-3xl transform translate-y-4 blur-xl scale-90 mx-auto w-64 h-5/6"></div>
-                  <img 
-                    src="https://via.placeholder.com/600x500.png?text=App+Screenshot" 
+                  <OptimizedImage 
+                    src="/api/placeholder/600/500?text=App+Screenshot" 
                     alt="Mobile App" 
                     className="w-full max-w-sm mx-auto rounded-3xl border-8 border-gray-800 shadow-2xl relative z-10"
+                    width={600}
+                    height={500}
                   />
                   
                   {/* Floating elements */}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import OptimizedImage from './common/OptimizedImage';
 import { useCart } from '../contexts/CartContext';
 import { Link } from 'react-router-dom';
 import { FaTimes, FaTrash, FaPlus, FaMinus, FaArrowRight, FaShoppingCart } from 'react-icons/fa';
@@ -97,10 +98,13 @@ const CartSidebar = ({ isOpen, onClose, isLoggedIn, setIsLoggedIn }) => {
                 <div key={item.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex gap-3">
                   {/* Product image */}
                   <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                    <img
+                    <OptimizedImage
                       src={item.image}
                       alt={item.name}
-                      className="w-full h-full object-contain p-2"
+                      className="w-full h-full p-2"
+                      objectFit="contain"
+                      width={64}
+                      height={64}
                     />
                   </div>
                   {/* Product details */}

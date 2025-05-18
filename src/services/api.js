@@ -168,28 +168,118 @@ export const productService = {
       throw error.response?.data || { message: 'Network error occurred' }
     }
   }
-
 }
 
 // Order Services
 export const orderService = {
-  getOrders: async () => {
+  getOrders: async (params = {}) => {
     try {
-      const response = await api.get('/orders')
-      console.log('Orders API response:', response.data)
-      return response.data
+      // Add a timestamp to prevent caching
+      const timestamp = Date.now();
+      const queryParams = { ...params, _t: timestamp };
+      
+      console.log('Fetching orders with params:', queryParams);
+      const response = await api.get('/orders', { params: queryParams });
+      console.log('Orders API response:', response.data);
+      
+      // The Laravel API returns { success: true, data: [...orders], meta: {...} }
+      // Transform the response to match expected format for the React app
+      if (response.data && response.data.success) {
+        // Map Laravel order statuses to more user-friendly ones if needed
+        const orders = (response.data.data || []).map(order => {
+          // Normalize status values to match our UI expectations
+          if (order.status === 'completed') {
+            order.displayStatus = 'Delivered';
+          } else if (order.status === 'processing') {
+            order.displayStatus = 'Ready for Pickup';
+          } else if (order.status === 'in_transit') {
+            order.displayStatus = 'In Transit';
+          } else if (order.status === 'cancelled') {
+            order.displayStatus = 'Cancelled';
+          } else {
+            order.displayStatus = 'Order Received';
+          }
+          return order;
+        });
+        
+        return {
+          success: true,
+          orders: orders,
+          meta: response.data.meta
+        };
+      } else {
+        console.error('Invalid order response format:', response.data);
+        return { success: false, message: 'Failed to fetch orders', orders: [] };
+      }
     } catch (error) {
-      console.error('Order fetch error:', error)
-      return { success: false, message: 'Failed to fetch orders', orders: [] }
+      console.error('Order fetch error:', error);
+      return { success: false, message: 'Failed to fetch orders', orders: [] };
     }
   },
   
   getOrder: async (id) => {
     try {
-      const response = await api.get(`/orders/${id}`)
-      return response.data
+      // Add a timestamp to prevent caching
+      const timestamp = Date.now();
+      
+      console.log(`Fetching order details for ID: ${id}`);
+      const response = await api.get(`/orders/${id}`, { 
+        params: { _t: timestamp } 
+      });
+      console.log('Order details API response:', response.data);
+      
+      // Transform the response to match the expected format
+      if (response.data && response.data.success) {
+        const order = response.data.data || null;
+        
+        // Add display status for UI
+        if (order) {
+          if (order.status === 'completed') {
+            order.displayStatus = 'Delivered';
+          } else if (order.status === 'processing') {
+            order.displayStatus = 'Ready for Pickup';
+          } else if (order.status === 'in_transit') {
+            order.displayStatus = 'In Transit';
+          } else if (order.status === 'cancelled') {
+            order.displayStatus = 'Cancelled';
+          } else {
+            order.displayStatus = 'Order Received';
+          }
+          
+          // Calculate progress percentage for order tracking
+          if (order.status === 'completed') {
+            order.progressPercentage = 100;
+          } else if (order.status === 'in_transit') {
+            order.progressPercentage = 75;
+          } else if (order.status === 'processing') {
+            order.progressPercentage = 50;
+          } else if (order.status === 'pending') {
+            order.progressPercentage = 25;
+          } else if (order.status === 'cancelled') {
+            order.progressPercentage = 100;
+          } else {
+            order.progressPercentage = 0;
+          }
+        }
+        
+        return {
+          success: true,
+          order: order
+        };
+      } else {
+        console.error('Invalid order details response format:', response.data);
+        return { 
+          success: false, 
+          message: response.data?.message || 'Failed to fetch order details'
+        };
+      }
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      console.error('Order details fetch error:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to fetch order details',
+        error: error.message 
+      };
     }
   },
   
@@ -230,6 +320,51 @@ export const orderService = {
       
       throw error.response?.data || { message: 'Network error occurred' };
     }
+  },
+  
+  // New method: Poll for order updates
+  pollOrderStatus: async (orderId, interval = 30000) => {
+    if (!orderId) return null;
+    
+    // Create a promise that will resolve when the order reaches a final state
+    // or will be manually rejected if needed
+    return new Promise((resolve, reject) => {
+      const checkStatus = async () => {
+        try {
+          const response = await orderService.getOrder(orderId);
+          
+          if (!response.success) {
+            console.error('Failed to poll order status:', response.message);
+            return; // Continue polling even if there's an error
+          }
+          
+          const order = response.order;
+          
+          // If order has reached a final state or payment status has updated for cash payment
+          if (order.status === 'completed' || order.status === 'cancelled' || 
+              (order.payment_method === 'cash' && order.payment_status === 'paid')) {
+            console.log('Order reached final state or payment status updated:', order);
+            resolve(order);
+            return;
+          }
+          
+          // Otherwise, continue polling
+          setTimeout(checkStatus, interval);
+        } catch (error) {
+          console.error('Error polling order status:', error);
+          // Continue polling even if there's an error
+          setTimeout(checkStatus, interval);
+        }
+      };
+      
+      // Start polling
+      checkStatus();
+      
+      // Allow manual cancellation of polling
+      return {
+        cancel: () => reject(new Error('Order polling cancelled'))
+      };
+    });
   }
 }
 
@@ -242,34 +377,75 @@ export const profileService = {
       return response.data
     } catch (error) {
       console.error('Profile fetch error:', error)
-      return { success: false, message: 'Failed to fetch profile data' }
+      // Check for different types of errors and provide clear messages
+      if (error.response) {
+        // The server responded with an error status
+        return { 
+          success: false, 
+          message: error.response.data?.message || 'Server error. Please try again.'
+        };
+      } else if (error.request) {
+        // The request was made but no response received
+        return { 
+          success: false, 
+          message: 'No response from server. Please check your connection.'
+        };
+      } else {
+        return { success: false, message: 'Failed to fetch profile data' }
+      }
     }
   },
   
   updateProfile: async (profileData) => {
     try {
+      // Get CSRF cookie first for non-GET requests
+      await initializeCsrf();
+      
       const response = await api.put('/customers/profile', profileData)
+      console.log('Update profile response:', response.data)
       return response.data
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      console.error('Profile update error:', error)
+      if (error.response?.data) {
+        return error.response.data
+      } else {
+        throw { message: 'Network error occurred' }
+      }
     }
   },
   
   getPoints: async () => {
     try {
       const response = await api.get('/customers/points')
+      console.log('Points API response:', response.data)
       return response.data
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      console.error('Points fetch error:', error)
+      return { success: false, message: 'Failed to fetch points data' }
     }
   },
   
-  getPointsHistory: async () => {
+  getPointsHistory: async (limit = 10) => {
     try {
-      const response = await api.get('/customers/points/history')
+      const response = await api.get('/customers/points/history', {
+        params: { limit }
+      })
+      console.log('Points history API response:', response.data)
       return response.data
     } catch (error) {
-      throw error.response?.data || { message: 'Network error occurred' }
+      console.error('Points history fetch error:', error)
+      return { success: false, message: 'Failed to fetch points history' }
+    }
+  },
+  
+  getReferralInfo: async () => {
+    try {
+      const response = await api.get('/customers/referrals')
+      console.log('Referral API response:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Referral info fetch error:', error)
+      return { success: false, message: 'Failed to fetch referral information' }
     }
   }
 }

@@ -261,7 +261,6 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
             {/* Logo Container with solid white background */}
             <div className="bg-white rounded-xl p-4 mb-6 inline-flex items-center shadow-md">
               <img src="/logo.png" alt="Hitty Deliveries" className="h-14 mr-3" />
-              <div className="text-[#663399] font-bold text-lg">Hitty Deliveries</div>
             </div>
 
             {/* Welcome message */}

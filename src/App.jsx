@@ -1,20 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { CartProvider } from './contexts/CartContext'
 
-// Import Pages
-import Home from './pages/Home'
-import Products from './pages/Products'
-import Checkout from './pages/Checkout'
-import Orders from './pages/Orders'
-import OrderDetail from './pages/OrderDetail'
-import Profile from './pages/Profile'
-import Dashboard from './pages/Dashboard'
-import NotFound from './pages/NotFound'
-
 // Import Components
 import ProtectedRoute from './components/ProtectedRoute'
+
+// Lazy load page components
+const Home = lazy(() => import('./pages/Home'))
+const Products = lazy(() => import('./pages/Products'))
+const Checkout = lazy(() => import('./pages/Checkout'))
+const Orders = lazy(() => import('./pages/Orders'))
+const OrderDetail = lazy(() => import('./pages/OrderDetail'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#663399]"></div>
+    <span className="ml-3 text-lg text-[#663399] font-medium">Loading...</span>
+  </div>
+)
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -28,47 +36,49 @@ function App() {
   }, [])
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>
+    return <LoadingFallback />
   }
 
   return (
     <CartProvider>
       <div className="min-h-screen flex flex-col">
         <Toaster position="top-right" />
-        <Routes>
-          <Route path="/" element={<Home setIsLoggedIn={setIsLoggedIn} />} />
-          <Route path="/products" element={<Products setIsLoggedIn={setIsLoggedIn} />} />
-          <Route path="/checkout" element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Checkout />
-            </ProtectedRoute>
-          } />
-          
-          {/* Protected Routes */}
-          <Route path="/orders" element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Orders />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders/:id" element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <OrderDetail />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/dashboard" element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          
-          {/* 404 Route */}
-          <Route path="*" element={<NotFound />} />
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<Home setIsLoggedIn={setIsLoggedIn} />} />
+            <Route path="/products" element={<Products setIsLoggedIn={setIsLoggedIn} />} />
+            <Route path="/checkout" element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <Checkout />
+              </ProtectedRoute>
+            } />
+            
+            {/* Protected Routes */}
+            <Route path="/orders" element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <Orders />
+              </ProtectedRoute>
+            } />
+            <Route path="/orders/:id" element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <OrderDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            
+            {/* 404 Route */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
+        </Suspense>
       </div>
     </CartProvider>
   )

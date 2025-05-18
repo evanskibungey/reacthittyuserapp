@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FaArrowLeft,
   FaCreditCard,
@@ -6,6 +6,7 @@ import {
   FaMoneyBill,
   FaCoins,
   FaTimes,
+  FaCheckCircle,
 } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
 import { orderService, profileService } from '../services/api';
@@ -49,6 +50,10 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderData, setOrderData] = useState(null);
+  const [countdown, setCountdown] = useState(4);
+  const countdownRef = useRef(null);
 
   // Calculate order summary on cart change
   useEffect(() => {
@@ -140,6 +145,23 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
     });
   };
 
+  // Redirect to orders page
+  const redirectToOrders = () => {
+    // Get necessary identifiers from the orderData based on Laravel API response
+    if (orderData) {
+      // From the Laravel controller, we know the API returns:
+      // transaction_number, order_number, and order_id
+      const orderId = orderData.order_id || '';
+      const orderNumber = orderData.order_number || '';
+      const transactionNumber = orderData.transaction_number || '';
+      
+      // Build URL with correct parameters
+      window.location.href = `http://localhost:5174/orders?refresh=${Date.now()}&order_id=${orderId}&order_number=${orderNumber}&transaction=${transactionNumber}`;
+    } else {
+      window.location.href = `http://localhost:5174/orders?refresh=${Date.now()}`;
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -217,11 +239,20 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
         setSuccessMessage(
           `Order processed successfully! Order #${response.data.transaction_number} has been placed. ${statusMessage} ${pointsMessage}`
         );
-
+        
+        // Store order data for success modal
+        setOrderData(response.data);
+        
+        // Show success modal
+        setShowSuccessModal(true);
+        
         clearCart();
+        
+        // Set timeout to redirect after 4 seconds
         setTimeout(() => {
-          onClose();
-        }, 3000);
+          // Redirect with correct parameters matching the API response
+          redirectToOrders();
+        }, 4000);
       } else {
         setError(response.message || 'Failed to process your order. Please try again.');
       }
@@ -237,6 +268,33 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
     }
   };
 
+  // Set up countdown timer when success modal is shown
+  useEffect(() => {
+    if (showSuccessModal) {
+      // Clear any existing interval
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      
+      // Initialize countdown
+      setCountdown(4);
+      
+      // Start countdown
+      countdownRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    // Clean up interval on component unmount
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [showSuccessModal]);
+
   if (!isOpen) return null;
 
   return (
@@ -247,9 +305,44 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
         onClick={onClose}
       ></div>
 
-      {/* Modal container */}
+      {/* Success Modal */}
+      {showSuccessModal && orderData && (
+        <div className="fixed top-1/2 left-1/2 z-[60] bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform -translate-x-1/2 -translate-y-1/2 text-center">
+          <div className="flex flex-col items-center">
+            <FaCheckCircle className="text-green-500 text-6xl mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Order Successful!</h2>
+            <p className="text-gray-600 mb-2">
+              Your order #{orderData.transaction_number} has been placed.
+            </p>
+            <p className="text-gray-600 mb-4">
+              Status: <span className="font-semibold text-purple-700">{orderData.status}</span>
+            </p>
+            {orderData.points_earned > 0 && (
+              <div className="bg-yellow-50 w-full p-3 rounded-lg mb-4 flex items-center justify-center">
+                <FaCoins className="text-yellow-500 mr-2" />
+                <p className="text-sm text-purple-700">
+                  You've earned <strong>{orderData.points_earned} Hitty Points!</strong>
+                </p>
+              </div>
+            )}
+            <p className="text-sm text-gray-500 mt-2">
+              Redirecting to My Orders in <span className="font-bold">{countdown}</span> seconds...
+            </p>
+            <button
+              onClick={redirectToOrders}
+              className="mt-4 bg-purple-700 text-white py-2 px-6 rounded-lg hover:bg-purple-800 transition-colors"
+            >
+              Go to My Orders Now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Modal container */}
       <div
-        className="fixed top-1/2 left-1/2 z-50 bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto p-4 md:p-6 transform -translate-x-1/2 -translate-y-1/2 flex flex-col md:flex-row"
+        className={`fixed top-1/2 left-1/2 z-50 bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto p-4 md:p-6 transform -translate-x-1/2 -translate-y-1/2 flex flex-col md:flex-row ${
+          showSuccessModal ? 'opacity-0 pointer-events-none' : ''
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal header */}
@@ -464,8 +557,8 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
                 </div>
               )}
 
-              {/* Success Message */}
-              {successMessage && (
+              {/* Text Success Message - now hidden when success modal is shown */}
+              {successMessage && !showSuccessModal && (
                 <div
                   className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
                   role="alert"

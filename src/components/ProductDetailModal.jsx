@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import OptimizedImage from './common/OptimizedImage';
 import { productService } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { 
@@ -195,10 +196,13 @@ const ProductDetailModal = ({ isOpen, onClose, product, navigateToCart }) => {
           {/* Left Panel - Product Image */}
           <div className="md:w-1/3 bg-gradient-to-b from-purple-50 to-white p-4 md:p-5 flex items-center justify-center">
             <div className="relative w-full h-64 flex items-center justify-center p-4">
-              <img 
-                src={displayProduct.image_url || `https://via.placeholder.com/400x400.png?text=${encodeURIComponent(displayProduct.name || 'Product')}`}
+              <OptimizedImage 
+                src={displayProduct.image_url || `/api/placeholder/400/400?text=${encodeURIComponent(displayProduct.name || 'Product')}`}
                 alt={displayProduct?.name || 'Product'} 
-                className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105"
+                className="max-h-full max-w-full transition-transform duration-300 hover:scale-105"
+                objectFit="contain"
+                width={400}
+                height={400}
               />
               
               {/* Product badges overlay on image */}
