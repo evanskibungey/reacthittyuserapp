@@ -170,6 +170,43 @@ export const productService = {
   }
 }
 
+// Notification Services
+export const notificationService = {
+  getNotifications: async (params = {}) => {
+    try {
+      // Add a timestamp to prevent caching
+      const timestamp = Date.now();
+      const queryParams = { ...params, _t: timestamp };
+      
+      const response = await api.get('/notifications', { params: queryParams });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return { success: false, message: 'Failed to fetch notifications', data: [] };
+    }
+  },
+  
+  markAsRead: async (notificationId) => {
+    try {
+      const response = await api.post(`/notifications/${notificationId}/read`);
+      return response.data;
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return { success: false, message: 'Failed to mark notification as read' };
+    }
+  },
+  
+  markAllAsRead: async () => {
+    try {
+      const response = await api.post('/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      return { success: false, message: 'Failed to mark all notifications as read' };
+    }
+  }
+}
+
 // Order Services
 export const orderService = {
   getOrders: async (params = {}) => {

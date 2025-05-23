@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../contexts/CartContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   FaShoppingCart, 
@@ -16,7 +17,8 @@ import {
   FaCog,
   FaGift,
   FaWhatsapp,
-  FaHeadset
+  FaHeadset,
+  FaCreditCard
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import OptimizedImage from './common/OptimizedImage';
@@ -25,11 +27,19 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
   const [scrollPosition, setScrollPosition] = useState(0);
   const [isHeaderFixed, setIsHeaderFixed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [hasNotifications, setHasNotifications] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItemsCount } = useCart();
+  
+  // Get notifications from context
+  const { 
+    notifications, 
+    unreadCount, 
+    loading: notificationsLoading, 
+    markAsRead, 
+    markAllAsRead 
+  } = useNotifications();
 
   // Handle scroll events
   useEffect(() => {
@@ -79,29 +89,58 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                       location.pathname.includes('/orders') ||
                       location.pathname.includes('/points');
   
-  // Sample notifications
-  const notifications = [
-    {
-      id: 1,
-      title: "Order Delivered",
-      message: "Your order #12345 has been delivered.",
-      time: "2 hours ago",
-      read: false,
-      type: "success"
-    },
-    {
-      id: 2,
-      title: "Special Offer",
-      message: "Get 20% off on your next purchase!",
-      time: "1 day ago",
-      read: false,
-      type: "promo"
+  // Format notification time
+  const formatNotificationTime = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+    
+    if (diffDay > 0) {
+      return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`;
     }
-  ];
+    if (diffHour > 0) {
+      return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`;
+    }
+    if (diffMin > 0) {
+      return diffMin === 1 ? '1 minute ago' : `${diffMin} minutes ago`;
+    }
+    return 'Just now';
+  };
   
-  // Mark all notifications as read
-  const markAllAsRead = () => {
-    setHasNotifications(false);
+  // Handle notification click
+  const handleNotificationClick = (notification) => {
+    // Mark notification as read in the backend
+    if (!notification.read_at) {
+      markAsRead(notification.id);
+    }
+    
+    // Navigate based on notification type
+    if (notification.data.type === 'order_status' && notification.data.order_id) {
+      navigate(`/orders/${notification.data.order_id}`);
+      setShowNotifications(false);
+    }
+  };
+  
+  // Get notification icon based on type
+  const getNotificationIcon = (notification) => {
+    const type = notification.data?.type || 'info';
+    
+    switch(type) {
+      case 'order_status':
+        return 'success';
+      case 'promo':
+        return 'promo';
+      case 'payment':
+        return 'payment';
+      default:
+        return 'info';
+    }
   };
 
   return (
@@ -237,10 +276,15 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                 className="relative text-gray-700 hover:text-purple-600 p-2 rounded-full hover:bg-purple-50 transition-colors"
                 aria-label="Notifications"
               >
-                {hasNotifications ? (
+                {unreadCount > 0 ? (
                   <>
                     <FaBell className="w-5 h-5" />
                     <span className="absolute -top-1 -right-1 bg-red-500 w-2.5 h-2.5 rounded-full"></span>
+                    {unreadCount > 1 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <FaRegBell className="w-5 h-5" />
@@ -260,26 +304,36 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                     </button>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
-                    {notifications.length > 0 ? (
+                    {notificationsLoading ? (
+                      <div className="py-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mx-auto mb-3"></div>
+                        <p className="text-gray-500">Loading notifications...</p>
+                      </div>
+                    ) : notifications && notifications.length > 0 ? (
                       notifications.map(notification => (
                         <div 
                           key={notification.id} 
-                          className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${notification.read ? 'opacity-70' : ''}`}
+                          className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${notification.read_at ? 'opacity-70' : ''}`}
+                          onClick={() => handleNotificationClick(notification)}
                         >
                           <div className="flex">
                             <div className={`flex-shrink-0 mr-3 mt-1 rounded-full p-2 ${
-                              notification.type === 'success' 
+                              getNotificationIcon(notification) === 'success' 
                                 ? 'bg-green-100 text-green-600' 
-                                : notification.type === 'promo' 
+                                : getNotificationIcon(notification) === 'promo' 
                                   ? 'bg-purple-100 text-purple-600' 
-                                  : 'bg-blue-100 text-blue-600'
+                                  : getNotificationIcon(notification) === 'payment'
+                                    ? 'bg-blue-100 text-blue-600'
+                                    : 'bg-gray-100 text-gray-600'
                             }`}>
-                              {notification.type === 'success' ? (
+                              {getNotificationIcon(notification) === 'success' ? (
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
-                              ) : notification.type === 'promo' ? (
+                              ) : getNotificationIcon(notification) === 'promo' ? (
                                 <FaGift className="h-4 w-4" />
+                              ) : getNotificationIcon(notification) === 'payment' ? (
+                                <FaCreditCard className="h-4 w-4" />
                               ) : (
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -288,10 +342,10 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                             </div>
                             <div className="flex-1">
                               <div className="flex justify-between items-start">
-                                <p className="font-medium text-gray-800">{notification.title}</p>
-                                <span className="text-xs text-gray-500">{notification.time}</span>
+                                <p className="font-medium text-gray-800">{notification.data?.title || 'Notification'}</p>
+                                <span className="text-xs text-gray-500">{formatNotificationTime(notification.created_at)}</span>
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                              <p className="text-sm text-gray-600 mt-1">{notification.data?.message || notification.data?.body || 'You have a new notification'}</p>
                             </div>
                           </div>
                         </div>

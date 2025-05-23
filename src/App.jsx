@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { CartProvider } from './contexts/CartContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 
 // Import Components
 import ProtectedRoute from './components/ProtectedRoute'
@@ -14,6 +15,7 @@ const Orders = lazy(() => import('./pages/Orders'))
 const OrderDetail = lazy(() => import('./pages/OrderDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Notifications = lazy(() => import('./pages/Notifications'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 // Loading fallback component
@@ -40,8 +42,9 @@ function App() {
   }
 
   return (
-    <CartProvider>
-      <div className="min-h-screen flex flex-col">
+    <NotificationProvider>
+      <CartProvider>
+        <div className="min-h-screen flex flex-col">
         <Toaster position="top-right" />
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
@@ -74,13 +77,19 @@ function App() {
                 <Dashboard />
               </ProtectedRoute>
             } />
+            <Route path="/notifications" element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <Notifications />
+              </ProtectedRoute>
+            } />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
-      </div>
-    </CartProvider>
+        </div>
+      </CartProvider>
+    </NotificationProvider>
   )
 }
 

@@ -18,7 +18,7 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
   // Order summary calculations
   const [orderSummary, setOrderSummary] = useState({
     subtotal: cartSubtotal,
-    deliveryFee: cartItems.length > 0 ? 150 : 0,
+    deliveryFee: 0, // Free delivery for all products
     discount: 0,
     total: 0,
   });
@@ -60,7 +60,7 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
     const discount = formData.usePoints
       ? Math.min(formData.pointsAmount, cartSubtotal)
       : 0;
-    const deliveryFee = cartItems.length > 0 ? 150 : 0;
+    const deliveryFee = 0; // Free delivery for all products
     const total = cartSubtotal + deliveryFee - discount;
     setOrderSummary({
       subtotal: cartSubtotal,
@@ -603,9 +603,9 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
                   <span>Subtotal</span>
                   <span>KSh {orderSummary.subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-green-600">
                   <span>Delivery Fee</span>
-                  <span>KSh {orderSummary.deliveryFee.toLocaleString()}</span>
+                  <span className="font-semibold">FREE</span>
                 </div>
                 {formData.usePoints && formData.pointsAmount > 0 && (
                   <div className="flex justify-between text-green-600">

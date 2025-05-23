@@ -11,7 +11,7 @@ const CartSidebar = ({ isOpen, onClose, isLoggedIn, setIsLoggedIn }) => {
   const { cartItems, cartSubtotal, updateCartItem, removeFromCart } = useCart();
 
   // Calculate totals
-  const deliveryFee = cartItems.length > 0 ? 150 : 0;
+  const deliveryFee = 0; // Free delivery for all products
   const total = cartSubtotal + deliveryFee;
 
   // Transaction notes state
@@ -185,9 +185,9 @@ const CartSidebar = ({ isOpen, onClose, isLoggedIn, setIsLoggedIn }) => {
                 <span>Subtotal</span>
                 <span>KSh {cartSubtotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-green-600">
                 <span>Delivery Fee</span>
-                <span>KSh {deliveryFee.toLocaleString()}</span>
+                <span className="font-semibold">FREE</span>
               </div>
               <div className="flex justify-between font-bold text-purple-700 text-lg pt-2 border-t">
                 <span>Total</span>
