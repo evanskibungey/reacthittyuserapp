@@ -70,11 +70,6 @@ const Sidebar = ({ onLogout }) => {
         path: '/orders',
       },
       {
-        title: 'Order History',
-        icon: <FaHistory />,
-        path: '/order-history',
-      },
-      {
         title: 'Saved Products',
         icon: <FaHeart />,
         path: '/wishlist',

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  FaArrowLeft,
   FaCreditCard,
   FaMobileAlt,
   FaMoneyBill,
@@ -13,7 +12,7 @@ import { orderService, profileService } from '../services/api';
 
 const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
   // Cart context
-  const { cartItems, cartSubtotal, clearCart } = useCart();
+  const { cartItems, cartSubtotal, clearCart, paymentMethod, paymentFormData } = useCart();
 
   // Order summary calculations
   const [orderSummary, setOrderSummary] = useState({
@@ -23,20 +22,11 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
     total: 0,
   });
 
-  // Checkout form state
+  // Checkout form state (simplified - payment method comes from context)
   const [formData, setFormData] = useState({
     deliveryNotes: transactionNotes || '',
-    paymentMethod: 'mobile_money',
     usePoints: false,
     pointsAmount: 0,
-    // Mobile money fields
-    mpesaPhone: '',
-    mpesaTransactionId: '',
-    // Credit account fields
-    creditReason: '',
-    expectedPaymentDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0],
   });
 
   // Customer state
@@ -168,16 +158,16 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
     if (isSubmitting) return;
 
     if (
-      formData.paymentMethod === 'mobile_money' &&
-      (!formData.mpesaPhone || !formData.mpesaTransactionId)
+      paymentMethod === 'mobile_money' &&
+      (!paymentFormData.mpesaPhone || !paymentFormData.mpesaTransactionId)
     ) {
-      setError('Please enter your M-Pesa phone number and transaction ID');
+      setError('Please enter your M-Pesa phone number and transaction ID in the cart');
       return;
     } else if (
-      formData.paymentMethod === 'account' &&
-      (!formData.creditReason || !formData.expectedPaymentDate)
+      paymentMethod === 'account' &&
+      (!paymentFormData.creditReason || !paymentFormData.expectedPaymentDate)
     ) {
-      setError('Please enter a reason for credit and expected payment date');
+      setError('Please enter a reason for credit and expected payment date in the cart');
       return;
     }
 
@@ -195,7 +185,7 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
           product_id: item.product_id,
           quantity: item.quantity,
         })),
-        payment_method: formData.paymentMethod,
+        payment_method: paymentMethod,
         use_points: formData.usePoints,
       };
 
@@ -216,12 +206,12 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
         checkoutData.points_amount = formData.pointsAmount;
       }
 
-      if (formData.paymentMethod === 'mobile_money') {
-        checkoutData.mpesa_phone = formData.mpesaPhone;
-        checkoutData.mpesa_transaction_id = formData.mpesaTransactionId;
-      } else if (formData.paymentMethod === 'account') {
-        checkoutData.credit_reason = formData.creditReason;
-        checkoutData.expected_payment_date = formData.expectedPaymentDate;
+      if (paymentMethod === 'mobile_money') {
+        checkoutData.mpesa_phone = paymentFormData.mpesaPhone;
+        checkoutData.mpesa_transaction_id = paymentFormData.mpesaTransactionId;
+      } else if (paymentMethod === 'account') {
+        checkoutData.credit_reason = paymentFormData.creditReason;
+        checkoutData.expected_payment_date = paymentFormData.expectedPaymentDate;
       }
 
       const response = await orderService.processCheckout(checkoutData);
@@ -359,7 +349,7 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
 
         {/* Main content */}
         <div className="flex flex-col md:flex-row w-full pt-16 gap-8">
-          {/* Left panel: Delivery & Payment Method */}
+          {/* Left panel: Delivery Information */}
           <div className="flex-1 md:w-2/3 min-w-0">
             {/* Delivery Info */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6 border border-gray-200">
@@ -393,154 +383,41 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
               </div>
             </div>
 
-            {/* Payment Methods Section */}
+            {/* Selected Payment Method Display */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Payment Method</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                {/* Cash on Delivery */}
-                <div
-                  onClick={() =>
-                    setFormData({ ...formData, paymentMethod: 'cash' })
-                  }
-                  className={`border rounded-lg p-4 flex flex-col items-center cursor-pointer transition-all duration-200 ${
-                    formData.paymentMethod === 'cash'
-                      ? 'border-green-500 bg-green-50 ring-2 ring-green-200 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                  role="radio"
-                  aria-checked={formData.paymentMethod === 'cash'}
-                  tabIndex={0}
-                >
-                  <FaMoneyBill className="text-green-600 text-xl mb-2" />
-                  <span className="font-medium text-green-700">Cash on Delivery</span>
-                </div>
-
-                {/* M-Pesa */}
-                <div
-                  onClick={() =>
-                    setFormData({ ...formData, paymentMethod: 'mobile_money' })
-                  }
-                  className={`border rounded-lg p-4 flex flex-col items-center cursor-pointer transition-all duration-200 ${
-                    formData.paymentMethod === 'mobile_money'
-                      ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                  role="radio"
-                  aria-checked={formData.paymentMethod === 'mobile_money'}
-                  tabIndex={0}
-                >
-                  <FaMobileAlt className="text-purple-600 text-xl mb-2" />
-                  <span className="font-medium text-purple-700">M-Pesa</span>
-                </div>
-
-                {/* Credit Account */}
-                <div
-                  onClick={() =>
-                    setFormData({ ...formData, paymentMethod: 'account' })
-                  }
-                  className={`border rounded-lg p-4 flex flex-col items-center cursor-pointer transition-all duration-200 ${
-                    formData.paymentMethod === 'account'
-                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                  role="radio"
-                  aria-checked={formData.paymentMethod === 'account'}
-                  tabIndex={0}
-                >
-                  <FaCreditCard className="text-blue-600 text-xl mb-2" />
-                  <span className="font-medium text-blue-700">Credit</span>
-                </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Selected Payment Method</h3>
+              <div className="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                {paymentMethod === 'cash' && (
+                  <>
+                    <FaMoneyBill className="text-green-600 text-xl mr-3" />
+                    <div>
+                      <span className="font-medium text-green-700 block">Cash on Delivery</span>
+                      <span className="text-sm text-gray-500">Pay when your order is delivered</span>
+                    </div>
+                  </>
+                )}
+                {paymentMethod === 'mobile_money' && (
+                  <>
+                    <FaMobileAlt className="text-purple-600 text-xl mr-3" />
+                    <div>
+                      <span className="font-medium text-purple-700 block">M-Pesa</span>
+                      <span className="text-sm text-gray-500">Phone: {paymentFormData.mpesaPhone}</span>
+                    </div>
+                  </>
+                )}
+                {paymentMethod === 'account' && (
+                  <>
+                    <FaCreditCard className="text-blue-600 text-xl mr-3" />
+                    <div>
+                      <span className="font-medium text-blue-700 block">Credit Account</span>
+                      <span className="text-sm text-gray-500">Payment due: {paymentFormData.expectedPaymentDate}</span>
+                    </div>
+                  </>
+                )}
               </div>
-
-              {/* M-Pesa Fields */}
-              {formData.paymentMethod === 'mobile_money' && (
-                <div className="bg-purple-50 p-4 rounded-lg mt-3 border border-purple-100">
-                  <h4 className="font-semibold text-purple-900 mb-3">M-Pesa Payment Details</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label
-                        htmlFor="mpesaPhone"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        M-Pesa Phone Number
-                      </label>
-                      <input
-                        id="mpesaPhone"
-                        name="mpesaPhone"
-                        value={formData.mpesaPhone}
-                        onChange={handleInputChange}
-                        className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="e.g. 0712345678"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="mpesaTransactionId"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Transaction ID
-                      </label>
-                      <input
-                        id="mpesaTransactionId"
-                        name="mpesaTransactionId"
-                        value={formData.mpesaTransactionId}
-                        onChange={handleInputChange}
-                        className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="e.g. QJI12345XZ"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Pay to Till Number <strong>123456</strong> via M-Pesa first.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Credit Account Fields */}
-              {formData.paymentMethod === 'account' && (
-                <div className="bg-blue-50 p-4 rounded-lg mt-3 border border-blue-100">
-                  <h4 className="font-semibold text-blue-900 mb-3">Credit Account Details</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label
-                        htmlFor="creditReason"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Reason for Credit
-                      </label>
-                      <textarea
-                        id="creditReason"
-                        name="creditReason"
-                        value={formData.creditReason}
-                        onChange={handleInputChange}
-                        rows="2"
-                        className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Please explain why you need credit for this purchase"
-                      ></textarea>
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="expectedPaymentDate"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Expected Payment Date
-                      </label>
-                      <input
-                        type="date"
-                        id="expectedPaymentDate"
-                        name="expectedPaymentDate"
-                        value={formData.expectedPaymentDate}
-                        onChange={handleInputChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Credit purchases require approval and must be paid by the date specified.
-                    </p>
-                  </div>
-                </div>
-              )}
+              <p className="text-sm text-gray-500 mt-2">
+                To change payment method, go back to your cart and select a different option.
+              </p>
             </div>
           </div>
 
@@ -646,7 +523,7 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
               </p>
             </div>
           </div>
-        </div>
+        </div>  
       </div>
     </>
   );

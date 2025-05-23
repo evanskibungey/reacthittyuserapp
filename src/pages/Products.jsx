@@ -48,7 +48,7 @@ const ProgressiveImage = ({ src, alt, className, width, height }) => {
 };
 
 const Products = ({ setIsLoggedIn }) => {
-  const { addToCart } = useCart();
+  const { addToCart, setOnAddToCartCallback } = useCart();
   // State for modals and sidebars
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -60,6 +60,18 @@ const Products = ({ setIsLoggedIn }) => {
   const handleNavigateToCart = () => {
     setIsCartOpen(true); // Open the cart sidebar
   };
+  
+  // Set up the cart callback when component mounts
+  useEffect(() => {
+    setOnAddToCartCallback(() => {
+      setIsCartOpen(true);
+    });
+    
+    // Cleanup callback when component unmounts
+    return () => {
+      setOnAddToCartCallback(null);
+    };
+  }, [setOnAddToCartCallback]);
   
   // Check if user is logged in
   const [isLoggedIn, setIsLoggedInState] = useState(false);

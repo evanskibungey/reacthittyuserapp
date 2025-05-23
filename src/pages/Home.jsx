@@ -34,12 +34,24 @@ const Home = ({ setIsLoggedIn }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const { addToCart } = useCart();
+  const { addToCart, setOnAddToCartCallback } = useCart();
   
   // Function to navigate to cart
   const handleNavigateToCart = () => {
     setIsCartOpen(true); // Open the cart sidebar
   };
+  
+  // Set up the cart callback when component mounts
+  useEffect(() => {
+    setOnAddToCartCallback(() => {
+      setIsCartOpen(true);
+    });
+    
+    // Cleanup callback when component unmounts
+    return () => {
+      setOnAddToCartCallback(null);
+    };
+  }, [setOnAddToCartCallback]);
   
   // Check if user is logged in
   const [isLoggedIn, setIsLoggedInState] = useState(false);
