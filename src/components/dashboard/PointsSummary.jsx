@@ -13,6 +13,11 @@ const PointsSummary = ({ pointsData, pointsHistory, isLoading }) => {
     });
   };
 
+  // Calculate the actual redemption value (10 points = KSh 10)
+  const calculateRedemptionValue = (points) => {
+    return Math.floor(points / 10) * 10;
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden border border-gray-100">
@@ -71,6 +76,19 @@ const PointsSummary = ({ pointsData, pointsHistory, isLoading }) => {
             <div className="text-xl font-bold text-gray-800">
               {pointsData?.hitty_points || 0} points
             </div>
+            <div className="text-sm text-purple-600 font-medium">
+              Worth KSh {calculateRedemptionValue(pointsData?.hitty_points || 0)}
+            </div>
+            {(pointsData?.hitty_points || 0) >= 100 && (
+              <div className="text-xs text-green-600 mt-1">
+                ✓ Ready to redeem!
+              </div>
+            )}
+            {(pointsData?.hitty_points || 0) < 100 && (pointsData?.hitty_points || 0) > 0 && (
+              <div className="text-xs text-orange-500 mt-1">
+                Need {100 - (pointsData?.hitty_points || 0)} more to redeem
+              </div>
+            )}
           </div>
         </div>
 

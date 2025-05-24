@@ -388,7 +388,7 @@ const Dashboard = () => {
                       </p>
                     )}
                     <div className="flex items-center text-amber-800 text-sm">
-                      <span>1 point = KSh 1</span>
+                      <span>10 points = KSh 10</span>
                     </div>
                   </div>
                 </div>
@@ -543,7 +543,7 @@ const Dashboard = () => {
                         <FaGift className="mx-auto text-gray-300 text-4xl mb-3" />
                         <p className="text-gray-500 mb-1">No points activity yet</p>
                         <p className="text-sm text-gray-400">
-                          Points are earned with every purchase and when friends use your referral code
+                          Earn 10 points (worth KSh 10) with every purchase and when friends use your referral code
                         </p>
                       </div>
                     )}
@@ -663,7 +663,7 @@ const Dashboard = () => {
                         <FaGift className="text-white text-2xl md:text-3xl mb-3" />
                         <h3 className="text-lg font-bold mb-2">Refer & Earn!</h3>
                         <p className="text-purple-100 mb-4 text-sm">
-                          Share your code <span className="font-mono font-bold">{profile.referral_code}</span> with friends and earn points when they make their first purchase.
+                          Share your code <span className="font-mono font-bold">{profile.referral_code}</span> with friends and earn 10 points (worth KSh 10) when they make their first purchase.
                         </p>
                         <button 
                           onClick={() => {

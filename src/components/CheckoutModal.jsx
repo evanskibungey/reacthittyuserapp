@@ -500,7 +500,7 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
               <div className="bg-purple-50 p-3 rounded-lg mb-6 flex items-center border-l-4 border-yellow-500">
                 <FaCoins className="text-yellow-500 mr-2" />
                 <p className="text-sm text-purple-700">
-                  You'll earn <strong>10 Hitty Points</strong> when your order is completed!
+                  You'll earn <strong>10 Hitty Points (worth KSh 10)</strong> when your order is completed!
                 </p>
               </div>
 

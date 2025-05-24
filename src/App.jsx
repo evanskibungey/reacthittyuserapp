@@ -16,6 +16,7 @@ const OrderDetail = lazy(() => import('./pages/OrderDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Notifications = lazy(() => import('./pages/Notifications'))
+const Points = lazy(() => import('./pages/Points/Points'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 // Loading fallback component
@@ -80,6 +81,11 @@ function App() {
             <Route path="/notifications" element={
               <ProtectedRoute isLoggedIn={isLoggedIn}>
                 <Notifications />
+              </ProtectedRoute>
+            } />
+            <Route path="/points" element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <Points />
               </ProtectedRoute>
             } />
             
