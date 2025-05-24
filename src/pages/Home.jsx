@@ -20,7 +20,7 @@ import {
   FaFilter,
   FaTimes
 } from 'react-icons/fa';
-import { productService } from '../services/api';
+import { productService, inquiryService } from '../services/api';
 import AuthModal from '../components/AuthModal';
 import CartSidebar from '../components/CartSidebar';
 import ProductDetailModal from '../components/ProductDetailModal';
@@ -29,6 +29,75 @@ import Footer from '../components/Footer';
 import OptimizedImage from '../components/common/OptimizedImage';
 
 const Home = ({ setIsLoggedIn }) => {
+  // Form state for contact/order form
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState(null);
+  
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [id]: value
+    }));
+  };
+  
+  // Handle form submission
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    console.log('Form submitted:', formData);
+    
+    try {
+      setIsSubmitting(true);
+      setFormError(null);
+      
+      // Check if this is an order request based on subject
+      const isOrderRequest = formData.subject === 'Order Gas';
+      
+      // Send data to the backend API
+      const response = await inquiryService.submitInquiry({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        is_order_request: isOrderRequest
+      });
+      
+      if (response.success) {
+        // Show success message
+        setFormSubmitted(true);
+        
+        // Reset form after 5 seconds
+        setTimeout(() => {
+          setFormSubmitted(false);
+          setFormData({
+            name: '',
+            phone: '',
+            email: '',
+            subject: '',
+            message: ''
+          });
+        }, 5000);
+      } else {
+        // Show error message
+        setFormError(response.message || 'An error occurred. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setFormError('An unexpected error occurred. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   // State for modals and sidebars
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -799,8 +868,18 @@ const Home = ({ setIsLoggedIn }) => {
               {/* Contact Form */}
               <div className="md:w-1/2">
                 <div className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-xl border border-gray-100 shadow-sm">
-                  <h3 className="text-2xl font-bold mb-6 text-gray-800">Send Us a Message</h3>
-                  <form className="space-y-5">
+                  <h3 className="text-2xl font-bold mb-6 text-gray-800">Send Us a Message/Order from here</h3>
+                  {formSubmitted ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                      <svg className="w-12 h-12 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h4 className="text-xl font-bold text-green-800 mb-2">Thank You!</h4>
+                      <p className="text-green-700 mb-4">Your message/order has been submitted successfully.</p>
+                      <p className="text-green-600 text-sm">We'll get back to you shortly.</p>
+                    </div>
+                  ) : (
+                  <form className="space-y-5" onSubmit={handleFormSubmit}>
                     <div>
                       <label htmlFor="name" className="block text-gray-700 mb-2 font-medium">Full Name</label>
                       <input 
@@ -808,16 +887,34 @@ const Home = ({ setIsLoggedIn }) => {
                         id="name" 
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-white"
                         placeholder="Your name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
                       />
                     </div>
                     
                     <div>
-                      <label htmlFor="email" className="block text-gray-700 mb-2 font-medium">Email Address</label>
+                      <label htmlFor="phone" className="block text-gray-700 mb-2 font-medium">Phone Number <span className="text-red-500">*</span></label>
+                      <input 
+                        type="tel" 
+                        id="phone" 
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-white"
+                        placeholder="Your phone number"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="email" className="block text-gray-700 mb-2 font-medium">Email Address <span className="text-gray-400">(Optional)</span></label>
                       <input 
                         type="email" 
                         id="email" 
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-white"
-                        placeholder="Your email"
+                        placeholder="Your email (optional)"
+                        value={formData.email}
+                        onChange={handleInputChange}
                       />
                     </div>
                     
@@ -826,8 +923,12 @@ const Home = ({ setIsLoggedIn }) => {
                       <select 
                         id="subject" 
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-white appearance-none"
+                        value={formData.subject}
+                        onChange={handleInputChange}
+                        required
                       >
                         <option>Select a subject</option>
+                        <option>Order Gas</option>
                         <option>Delivery Inquiry</option>
                         <option>Product Information</option>
                         <option>Billing Question</option>
@@ -848,18 +949,38 @@ const Home = ({ setIsLoggedIn }) => {
                         rows={4}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#663399] focus:border-transparent bg-white"
                         placeholder="Your message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        required
                       ></textarea>
                     </div>
                     
+                    {formError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4">
+                        {formError}
+                      </div>
+                    )}
+                    
                     <button 
                       type="submit"
-                      className="w-full bg-[#663399] hover:bg-[#4a235a] text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg transform hover:-translate-y-1"
+                      className="w-full bg-[#663399] hover:bg-[#4a235a] text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg transform hover:-translate-y-1 flex items-center justify-center"
+                      disabled={isSubmitting}
                     >
-                      Send Message
+                      {isSubmitting ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Submitting...
+                        </>
+                      ) : 'Send Message/Submit Order'}
                     </button>
                     
                     <p className="text-center text-gray-500 text-sm">We'll get back to you as soon as possible</p>
+                    <p className="text-center text-gray-500 text-sm mt-1">For urgent orders, please call us directly</p>
                   </form>
+                  )}
                 </div>
               </div>
             </div>

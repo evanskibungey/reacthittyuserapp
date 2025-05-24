@@ -207,6 +207,46 @@ export const notificationService = {
   }
 }
 
+// Inquiry Services
+export const inquiryService = {
+  submitInquiry: async (inquiryData) => {
+    try {
+      console.log('Submitting inquiry data:', inquiryData);
+      const response = await api.post('/inquiries', inquiryData);
+      console.log('Inquiry submission response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting inquiry:', error);
+      
+      // Check for different types of errors
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Server error response:', error.response.data);
+        return { 
+          success: false, 
+          message: error.response.data?.message || 'Server error occurred',
+          errors: error.response.data?.errors
+        };
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received:', error.request);
+        return { 
+          success: false, 
+          message: 'No response from server. Please check your connection.'
+        };
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Request setup error:', error.message);
+        return { 
+          success: false, 
+          message: 'Network error occurred'
+        };
+      }
+    }
+  }
+};
+
 // Order Services
 export const orderService = {
   getOrders: async (params = {}) => {
