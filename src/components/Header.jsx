@@ -82,6 +82,33 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
     // Redirect to home
     navigate('/');
   };
+
+  // Function to scroll to contact section
+  const scrollToContact = () => {
+    // If we're not on the home page, navigate there first
+    if (location.pathname !== '/') {
+      navigate('/');
+      // Use setTimeout to wait for navigation to complete
+      setTimeout(() => {
+        const contactSection = document.getElementById('contact');
+        if (contactSection) {
+          contactSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }, 100);
+    } else {
+      // If we're already on home page, just scroll to contact section
+      const contactSection = document.getElementById('contact');
+      if (contactSection) {
+        contactSection.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }
+  };
   
   // Check if we're on the dashboard
   const isDashboard = location.pathname.includes('/dashboard') || 
@@ -172,7 +199,7 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
             </div>
             
             <div className="flex items-center space-x-6">
-              <Link to="/track-order" className="hover:text-white/80 transition-colors flex items-center">
+              <Link to="/orders" className="hover:text-white/80 transition-colors flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
@@ -184,10 +211,13 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                 </svg>
                 About Us
               </Link>
-              <Link to="/contact" className="hover:text-white/80 transition-colors flex items-center">
+              <button 
+                onClick={scrollToContact}
+                className="hover:text-white/80 transition-colors flex items-center"
+              >
                 <FaMapMarkerAlt className="h-3 w-3 mr-1" />
                 Contact
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -251,10 +281,13 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
             </Link>
           )}
           
-          <Link to="/contact" className="text-gray-700 hover:text-purple-600 px-3 py-2 rounded-lg transition-colors hover:bg-purple-50 flex items-center">
+          <button 
+            onClick={scrollToContact}
+            className="text-gray-700 hover:text-purple-600 px-3 py-2 rounded-lg transition-colors hover:bg-purple-50 flex items-center"
+          >
             <FaHeadset className="mr-1 text-purple-500" size={14} />
             Support
-          </Link>
+          </button>
          
           <button 
             onClick={() => setIsCartOpen(true)}
@@ -514,14 +547,16 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    to="/contact" 
-                    className="flex items-center text-gray-700 hover:text-purple-600"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                  <button 
+                    onClick={() => {
+                      scrollToContact();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left flex items-center text-gray-700 hover:text-purple-600"
                   >
                     <FaHeadset className="w-5 h-5 mr-3 text-gray-400" />
                     Support
-                  </Link>
+                  </button>
                 </li>
                 <li>
                   <button 

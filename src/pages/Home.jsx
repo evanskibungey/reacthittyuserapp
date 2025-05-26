@@ -806,7 +806,7 @@ const Home = ({ setIsLoggedIn }) => {
       </section>
 
       {/* Contact Section - IMPROVED */}
-      <section className="py-20 bg-gray-50">
+      <section id="contact" className="py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="bg-white rounded-2xl p-8 md:p-12 shadow-lg border border-gray-100">
             <div className="flex flex-col md:flex-row gap-12">

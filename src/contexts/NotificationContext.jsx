@@ -89,10 +89,28 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     fetchNotifications();
     
-    // Poll for new notifications every minute
-    const intervalId = setInterval(fetchNotifications, 60000);
+    // Poll for new notifications every 2 minutes (reduced frequency to avoid rate limiting)
+    const intervalId = setInterval(fetchNotifications, 120000);
     
-    return () => clearInterval(intervalId);
+    // Also fetch when user becomes active (focus/visibility change)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchNotifications();
+      }
+    };
+    
+    const handleFocus = () => {
+      fetchNotifications();
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Provide notification context value
