@@ -20,6 +20,8 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import OptimizedImage from '../components/common/OptimizedImage';
+import { isProductAvailable } from '../utils/stockUtils';
+import { StockBadge } from '../components/common/StockBadge';
 
 // Product Image Component with Progressive Loading
 const ProgressiveImage = ({ src, alt, className, width, height }) => {
@@ -695,22 +697,12 @@ const Products = ({ setIsLoggedIn }) => {
                             <span>{product.delivery_time || '30-60 min'}</span>
                           </div>
                           
-                          {product.current_stock > 10 ? (
-                            <span className="text-green-600 text-sm font-medium flex items-center">
-                              <div className="w-2 h-2 bg-green-600 rounded-full mr-1"></div>
-                              In Stock
-                            </span>
-                          ) : product.current_stock > 0 ? (
-                            <span className="text-orange-500 text-sm font-medium flex items-center">
-                              <div className="w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
-                              Low Stock
-                            </span>
-                          ) : (
-                            <span className="text-red-600 text-sm font-medium flex items-center">
-                              <div className="w-2 h-2 bg-red-600 rounded-full mr-1"></div>
-                              Out of Stock
-                            </span>
-                          )}
+                          <StockBadge 
+                            currentStock={product.current_stock} 
+                            showIcon={false} 
+                            showDot={true}
+                            size="sm"
+                          />
                         </div>
                         
                         <div className="flex items-center justify-between">
@@ -727,7 +719,7 @@ const Products = ({ setIsLoggedIn }) => {
                             onClick={() => addToCart(product, 1)}
                             className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:rotate-3 hover:shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed"
                             aria-label="Add to cart"
-                            disabled={product.current_stock <= 0}
+                            disabled={!isProductAvailable(product.current_stock)}
                           >
                             <FaPlus size={16} />
                           </button>

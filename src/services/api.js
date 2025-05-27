@@ -5,15 +5,34 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'  // 
 // Initialize CSRF protection for non-GET requests
 const initializeCsrf = async () => {
   try {
-    // Laravel's route to get the CSRF cookie
-    await axios.get('http://127.0.0.1:8000/sanctum/csrf-cookie', {
+    // Use environment variable for base URL or fallback
+    const baseUrl = import.meta.env.VITE_LARAVEL_BASE_URL || 'http://127.0.0.1:8000';
+    await axios.get(`${baseUrl}/sanctum/csrf-cookie`, {
       withCredentials: true
     });
-    console.log('CSRF cookie obtained');
+    console.log('CSRF cookie obtained successfully');
     return true;
   } catch (error) {
     console.error('Failed to initialize CSRF protection:', error);
+    console.error('Check if Laravel server is running on the correct port');
     return false;
+  }
+};
+
+// Test connection to Laravel backend
+export const testConnection = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/test-connection`, {
+      timeout: 5000
+    });
+    return { success: true, message: 'Connection successful', data: response.data };
+  } catch (error) {
+    return { 
+      success: false, 
+      message: 'Connection failed', 
+      error: error.message,
+      details: error.response?.data
+    };
   }
 };
 

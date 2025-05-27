@@ -27,6 +27,8 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import OptimizedImage from '../components/common/OptimizedImage';
+import { isProductAvailable } from '../utils/stockUtils';
+import { StockBadge } from '../components/common/StockBadge';
 
 const Home = ({ setIsLoggedIn }) => {
   // Form state for contact/order form
@@ -565,22 +567,12 @@ const Home = ({ setIsLoggedIn }) => {
                                 <span>{product.delivery_time}</span>
                               </div>
                               
-                              {product.current_stock > 10 ? (
-                                <span className="text-green-600 text-sm font-medium flex items-center">
-                                  <div className="w-2 h-2 bg-green-600 rounded-full mr-1"></div>
-                                  In Stock
-                                </span>
-                              ) : product.current_stock > 0 ? (
-                                <span className="text-orange-500 text-sm font-medium flex items-center">
-                                  <div className="w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
-                                  Low Stock
-                                </span>
-                              ) : (
-                                <span className="text-red-600 text-sm font-medium flex items-center">
-                                  <div className="w-2 h-2 bg-red-600 rounded-full mr-1"></div>
-                                  Out of Stock
-                                </span>
-                              )}
+                              <StockBadge 
+                                currentStock={product.current_stock} 
+                                showIcon={false} 
+                                showDot={true}
+                                size="sm"
+                              />
                             </div>
                             
                             <div className="flex items-center justify-between">
@@ -597,7 +589,7 @@ const Home = ({ setIsLoggedIn }) => {
                                 onClick={() => addToCart(product, 1)}
                                 className="bg-[#663399] hover:bg-[#4a235a] text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
                                 aria-label="Add to cart"
-                                disabled={product.current_stock <= 0}
+                                disabled={!isProductAvailable(product.current_stock)}
                               >
                                 <FaPlus size={16} />
                               </button>

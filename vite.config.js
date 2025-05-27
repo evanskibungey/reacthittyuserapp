@@ -15,8 +15,15 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost/hitty-deliveries/public',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path // Keep the /api prefix
+      },
+      '/sanctum': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false
       }
     }
   },

@@ -6,6 +6,8 @@ import {
   FaTimes, FaPlus, FaMinus, FaStar, FaStarHalfAlt, 
   FaTruck, FaShieldAlt, FaCheck, FaCreditCard
 } from 'react-icons/fa';
+import { isProductAvailable } from '../utils/stockUtils';
+import { StockBadgeWithBg } from './common/StockBadge';
 
 const ProductDetailModal = ({ isOpen, onClose, product, navigateToCart }) => {
   const modalRef = useRef();
@@ -83,7 +85,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, navigateToCart }) => {
   const handleAddToCart = useCallback(() => {
     const productToAdd = productDetails || product;
     // Check if the product is available
-    if (productToAdd?.current_stock <= 0) {
+    if (!isProductAvailable(productToAdd?.current_stock)) {
       // Show error notification or toast here if needed
       console.warn('Product is out of stock');
       return;
@@ -136,13 +138,6 @@ const ProductDetailModal = ({ isOpen, onClose, product, navigateToCart }) => {
 
   // Get the most up-to-date product data
   const displayProduct = productDetails || product || {};
-  
-  // Determine stock status
-  const stockStatus = displayProduct?.current_stock > 10 
-    ? { label: 'In Stock', color: 'text-green-600', bg: 'bg-green-100', icon: <FaCheck className="mr-1" /> }
-    : displayProduct?.current_stock > 0 
-      ? { label: 'Low Stock', color: 'text-orange-500', bg: 'bg-orange-100', icon: <FaMinus className="mr-1" /> }
-      : { label: 'Out of Stock', color: 'text-red-600', bg: 'bg-red-100', icon: <FaTimes className="mr-1" /> };
 
   // Extract key features from product description
   const extractFeatures = (description) => {
@@ -247,10 +242,11 @@ const ProductDetailModal = ({ isOpen, onClose, product, navigateToCart }) => {
                 </span>
                 
                 {/* Stock and Delivery Status */}
-                <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-md ${stockStatus.bg} ${stockStatus.color} font-medium`}>
-                  {stockStatus.icon}
-                  {stockStatus.label}
-                </span>
+                <StockBadgeWithBg 
+                  currentStock={displayProduct?.current_stock} 
+                  showIcon={true}
+                  size="xs"
+                />
                 
                 <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-medium">
                   <FaTruck className="mr-1 text-blue-500" size={8} />
@@ -298,9 +294,9 @@ const ProductDetailModal = ({ isOpen, onClose, product, navigateToCart }) => {
                 
                 <button 
                   onClick={handleAddToCart}
-                  disabled={displayProduct?.current_stock <= 0}
+                  disabled={!isProductAvailable(displayProduct?.current_stock)}
                   className={`${
-                    displayProduct?.current_stock <= 0 
+                    !isProductAvailable(displayProduct?.current_stock)
                       ? 'bg-gray-400 cursor-not-allowed' 
                       : 'bg-purple-600 hover:bg-purple-700 hover:shadow-md'
                   } text-white font-medium py-1.5 px-4 rounded-md flex items-center justify-center transition-all duration-300`}
