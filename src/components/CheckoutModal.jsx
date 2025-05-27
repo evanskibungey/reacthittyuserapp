@@ -137,6 +137,9 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
 
   // Redirect to orders page
   const redirectToOrders = () => {
+    // Get current domain instead of hardcoded localhost
+    const currentDomain = window.location.origin;
+    
     // Get necessary identifiers from the orderData based on Laravel API response
     if (orderData) {
       // From the Laravel controller, we know the API returns:
@@ -145,10 +148,10 @@ const CheckoutModal = ({ isOpen, onClose, transactionNotes }) => {
       const orderNumber = orderData.order_number || '';
       const transactionNumber = orderData.transaction_number || '';
       
-      // Build URL with correct parameters
-      window.location.href = `http://localhost:5174/orders?refresh=${Date.now()}&order_id=${orderId}&order_number=${orderNumber}&transaction=${transactionNumber}`;
+      // Build URL with correct parameters using current domain
+      window.location.href = `${currentDomain}/orders?refresh=${Date.now()}&order_id=${orderId}&order_number=${orderNumber}&transaction=${transactionNumber}`;
     } else {
-      window.location.href = `http://localhost:5174/orders?refresh=${Date.now()}`;
+      window.location.href = `${currentDomain}/orders?refresh=${Date.now()}`;
     }
   };
 
