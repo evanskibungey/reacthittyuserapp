@@ -44,7 +44,7 @@ const api = axios.create({
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest' // This is important for Laravel to recognize the request as AJAX
   },
-  withCredentials: true // This is important for CSRF protection and cookies
+  withCredentials: false // Disable credentials for now to test basic connectivity
 })
 
 // Add a request interceptor to add auth token
@@ -65,8 +65,8 @@ api.interceptors.request.use(
 export const authService = {
   login: async (credentials) => {
     try {
-      // Get CSRF cookie first
-      await initializeCsrf();
+      // Skip CSRF for now to test basic connectivity
+      // await initializeCsrf();
       
       const response = await api.post('/customers/login', credentials)
       if (response.data.success && response.data.data && response.data.data.token) {
