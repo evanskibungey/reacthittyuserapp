@@ -29,6 +29,8 @@ import Footer from '../components/Footer';
 import OptimizedImage from '../components/common/OptimizedImage';
 import { isProductAvailable } from '../utils/stockUtils';
 import { StockBadge } from '../components/common/StockBadge';
+// Import WhatsApp components for chat functionality
+import { WhatsAppSupportButton, WhatsAppProductButton, WhatsAppFloatingButton } from '../components/common/WhatsAppButton';
 
 const Home = ({ setIsLoggedIn }) => {
   // Form state for contact/order form
@@ -585,14 +587,23 @@ const Home = ({ setIsLoggedIn }) => {
                                 )}
                               </div>
                               
-                              <button 
-                                onClick={() => addToCart(product, 1)}
-                                className="bg-[#663399] hover:bg-[#4a235a] text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                aria-label="Add to cart"
-                                disabled={!isProductAvailable(product.current_stock)}
-                              >
-                                <FaPlus size={16} />
-                              </button>
+                              <div className="flex space-x-2">
+                                {/* WhatsApp Inquiry Button */}
+                                <WhatsAppProductButton 
+                                  product={product}
+                                  size="sm"
+                                />
+                                
+                                {/* Add to Cart Button */}
+                                <button 
+                                  onClick={() => addToCart(product, 1)}
+                                  className="bg-[#663399] hover:bg-[#4a235a] text-white p-2 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 transform hover:scale-110 hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                  aria-label="Add to cart"
+                                  disabled={!isProductAvailable(product.current_stock)}
+                                >
+                                  <FaPlus size={16} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -850,10 +861,7 @@ const Home = ({ setIsLoggedIn }) => {
                 </div>
                 
                 <div className="mt-10">
-                  <button className="bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded-lg flex items-center transition-all hover:shadow-lg transform hover:-translate-y-1">
-                    <FaWhatsapp className="mr-2 text-xl" />
-                    Chat on WhatsApp
-                  </button>
+                  <WhatsAppSupportButton />
                 </div>
               </div>
               
@@ -1007,13 +1015,7 @@ const Home = ({ setIsLoggedIn }) => {
       />
       
       {/* Floating WhatsApp Button - IMPROVED */}
-      <a 
-        href="#" 
-        className="fixed bottom-6 right-6 bg-green-500 text-white p-4 rounded-full shadow-xl hover:bg-green-600 transition-all z-50 transform hover:scale-110 hover:-translate-y-1 group"
-        aria-label="Chat on WhatsApp"
-      >
-        <FaWhatsapp size={28} className="group-hover:animate-pulse" />
-      </a>
+      <WhatsAppFloatingButton />
     </div>
   );
 };  

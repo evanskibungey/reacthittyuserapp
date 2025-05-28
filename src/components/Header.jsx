@@ -22,6 +22,8 @@ import {
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import OptimizedImage from './common/OptimizedImage';
+// Import WhatsApp utilities for chat functionality
+import { createWhatsAppUrl, getSupportMessage } from '../utils/whatsappUtils';
 
 const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }) => {
   const [scrollPosition, setScrollPosition] = useState(0);
@@ -194,7 +196,7 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                 <div className="bg-white/10 rounded-full p-1 mr-2">
                   <FaWhatsapp className="h-3 w-3 text-white" />
                 </div>
-                <span>Chat with us: <a href="https://wa.me/254712345678" className="font-medium hover:text-white/80 transition-colors">WhatsApp Support</a></span>
+                <span>Chat with us: <a href={createWhatsAppUrl(undefined, getSupportMessage())} target="_blank" rel="noopener noreferrer" className="font-medium hover:text-white/80 transition-colors">WhatsApp Support</a></span>
               </div>
             </div>
             
@@ -654,7 +656,7 @@ const Header = ({ setIsAuthModalOpen, setIsCartOpen, isLoggedIn, setIsLoggedIn }
                     Call Us
                   </a>
                   <a 
-                    href="https://wa.me/254712345678" 
+                    href={createWhatsAppUrl(undefined, getSupportMessage())} 
                     className="flex-1 bg-green-600 text-white text-center py-2 rounded text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center"
                   >
                     <FaWhatsapp className="mr-1" /> WhatsApp

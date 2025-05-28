@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { profileService } from '../../services/api'
 import toast from 'react-hot-toast'
-import { FaGift, FaUsers, FaCrown, FaHistory, FaShoppingCart, FaRegCopy, FaCheckCircle, FaInfoCircle, FaArrowRight } from 'react-icons/fa'
+import { FaGift, FaUsers, FaCrown, FaHistory, FaShoppingCart, FaRegCopy, FaCheckCircle, FaInfoCircle, FaArrowRight, FaCoins, FaCopy, FaCheck, FaExternalLinkAlt, FaStar, FaTrophy, FaWhatsapp, FaFacebook, FaTwitter } from 'react-icons/fa'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
-import { useNavigate } from 'react-router-dom'
+import { openWhatsApp, getReferralMessage } from '../../utils/whatsappUtils'
 
 const Points = () => {
   const [profile, setProfile] = useState(null)
@@ -85,18 +86,21 @@ const Points = () => {
 
   const shareReferralCode = (platform) => {
     const referralCode = referralData?.referral_code || profile?.referral_code
-    const message = `Join Hitty Deliveries and get 10 points (worth KSh 10) on your first order! Use my referral code: ${referralCode}`
-    const encodedMessage = encodeURIComponent(message)
     
     switch (platform) {
       case 'whatsapp':
-        window.open(`https://wa.me/?text=${encodedMessage}`, '_blank')
+        // Use the WhatsApp utility function for referral sharing
+        openWhatsApp(undefined, getReferralMessage(referralCode))
         break
       case 'facebook':
+        const message = `Join Hitty Deliveries and get 10 points (worth KSh 10) on your first order! Use my referral code: ${referralCode}`
+        const encodedMessage = encodeURIComponent(message)
         window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.origin)}&quote=${encodedMessage}`, '_blank')
         break
       case 'twitter':
-        window.open(`https://twitter.com/intent/tweet?text=${encodedMessage}`, '_blank')
+        const twitterMessage = `Join Hitty Deliveries and get 10 points (worth KSh 10) on your first order! Use my referral code: ${referralCode}`
+        const encodedTwitterMessage = encodeURIComponent(twitterMessage)
+        window.open(`https://twitter.com/intent/tweet?text=${encodedTwitterMessage}`, '_blank')
         break
       default:
         break
