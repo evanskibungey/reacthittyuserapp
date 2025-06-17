@@ -95,6 +95,11 @@ const Profile = () => {
       return
     }
     
+    if (formData.password && formData.password.length < 4) {
+      setError('Password must be at least 4 characters long')
+      return
+    }
+    
     try {
       setUpdating(true)
       
@@ -417,7 +422,7 @@ const Profile = () => {
                           value={formData.password}
                           onChange={handleChange}
                           className="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          minLength={8}
+                          minLength={4}
                         />
                         <button
                           type="button"
@@ -441,7 +446,7 @@ const Profile = () => {
                           value={formData.password_confirmation}
                           onChange={handleChange}
                           className="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          minLength={8}
+                          minLength={4}
                         />
                         <button
                           type="button"

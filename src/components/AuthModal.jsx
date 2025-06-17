@@ -164,6 +164,12 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
       return;
     }
     
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters long');
+      setLoading(false);
+      return;
+    }
+    
     try {
       // Prepare phone number for API by removing formatting
       const cleanPhone = phone.replace(/\D/g, '');
@@ -618,16 +624,16 @@ const AuthModal = ({ isOpen, onClose, setIsLoggedIn, onLoginSuccess }) => {
                     <div className="h-1.5 w-full bg-gray-200 rounded-full">
                       <div 
                         className={`h-1.5 rounded-full ${
-                          password.length < 6 ? 'w-1/4 bg-red-500' : 
-                          password.length < 8 ? 'w-2/4 bg-yellow-500' : 
-                          password.length < 10 ? 'w-3/4 bg-blue-500' : 'w-full bg-green-500'
+                          password.length < 4 ? 'w-1/4 bg-red-500' : 
+                          password.length < 6 ? 'w-2/4 bg-yellow-500' : 
+                          password.length < 8 ? 'w-3/4 bg-blue-500' : 'w-full bg-green-500'
                         }`}
                       ></div>
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {password.length < 6 ? 'Weak - Please use at least 6 characters' : 
-                       password.length < 8 ? 'Fair - Consider a longer password' : 
-                       password.length < 10 ? 'Good - Password has decent length' : 'Strong - Great password length'}
+                      {password.length < 4 ? 'Too short - Please use at least 4 characters' : 
+                       password.length < 6 ? 'Fair - Consider a longer password' : 
+                       password.length < 8 ? 'Good - Password has decent length' : 'Strong - Great password length'}
                     </div>
                   </div>
                 )}

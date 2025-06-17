@@ -209,8 +209,8 @@ const VendorRegistration = () => {
       if (!formData.password) {
         stepErrors.password = 'Password is required';
         isValid = false;
-      } else if (formData.password.length < 8) {
-        stepErrors.password = 'Password must be at least 8 characters';
+      } else if (formData.password.length < 4) {
+        stepErrors.password = 'Password must be at least 4 characters';
         isValid = false;
       }
       
